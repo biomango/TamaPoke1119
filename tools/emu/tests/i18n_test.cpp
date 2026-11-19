@@ -12,6 +12,7 @@ int FakeSerial::available() { return 0; }
 String FakeSerial::readStringUntil(char) { return String(""); }
 void sfxPlay(uint8_t) {}
 #include "i18n.h"
+#include "pet.h"  // MED_COUNT
 #include <cstdio>
 #include <cstring>
 
