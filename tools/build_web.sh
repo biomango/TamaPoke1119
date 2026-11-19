@@ -5,6 +5,11 @@ set -e
 cd "$(dirname "$0")/.."
 FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
 
+# Arduino_GFX enables its UTF-8 CJK font backend when U8g2 is installed.
+if ! arduino-cli lib list | grep -qi "U8g2"; then
+  arduino-cli lib install U8g2
+fi
+
 echo "Compilando..."
 arduino-cli compile --fqbn "$FQBN" --export-binaries .
 
@@ -13,6 +18,7 @@ echo "Fusionando binarios..."
 # esptool is not on PATH; the Arduino core ships one and that is the version
 # that matches the build we just made.
 ESPTOOL="$(ls ~/Library/Arduino15/packages/esp32/tools/esptool_py/*/esptool 2>/dev/null | head -1)"
+[ -z "$ESPTOOL" ] && ESPTOOL="$(find "$HOME/.arduino15/packages/esp32/tools/esptool_py" -type f \( -name esptool -o -name esptool.py \) 2>/dev/null | sort -V | tail -1)"
 [ -z "$ESPTOOL" ] && ESPTOOL="$(command -v esptool.py || command -v esptool)"
 [ -z "$ESPTOOL" ] && { echo "no esptool found"; exit 1; }
 
@@ -27,6 +33,9 @@ cp "$B/TamaPoke.ino.bootloader.bin" web/firmware/bootloader.bin
 cp "$B/TamaPoke.ino.partitions.bin" web/firmware/partitions.bin
 cp "$B/boot_app0.bin"               web/firmware/boot_app0.bin
 cp "$B/TamaPoke.ino.bin"            web/firmware/app.bin
+# A single-file, save-preserving update image. Flash ONLY at 0x10000;
+# keep the existing bootloader, partition table, NVS and FFAT untouched.
+cp "$B/TamaPoke.ino.bin"            web/firmware/tamapoke-update.bin
 
 # Still merged for anyone flashing a BLANK board from the command line in one
 # shot. It is deliberately NOT in the manifest: it would erase the save.
@@ -36,7 +45,7 @@ cp "$B/TamaPoke.ino.bin"            web/firmware/app.bin
   0xe000  "$B/boot_app0.bin" \
   0x10000 "$B/TamaPoke.ino.bin"
 
-echo "OK -> web/firmware/ (4 parts + tamapoke.bin for a blank board)"
+echo "OK -> web/firmware/ (4 installer parts + tamapoke-update.bin at 0x10000 + tamapoke.bin for a blank board)"
 
 # The manifest version is what the installer shows people; keeping it in step
 # with FW_VERSION by hand is exactly the sort of thing that silently rots.

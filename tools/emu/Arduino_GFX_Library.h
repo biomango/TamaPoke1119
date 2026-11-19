@@ -33,6 +33,7 @@ public:
   int16_t cx = 0, cy = 0;
   uint16_t textColor = 0xFFFF;
   uint8_t textSize = 1;
+  bool utf8Mode = false;
   volatile bool frameReady = false;
 
   Arduino_Canvas(int16_t w, int16_t h, Arduino_CO5300 *p)
@@ -139,6 +140,9 @@ public:
   // --- text: the classic 5x7 glyphs, 6*size advance, same as Adafruit_GFX ---
   void setTextColor(uint16_t c) { textColor = c; }
   void setTextSize(uint8_t s) { textSize = s ? s : 1; }
+  void setFont() {}
+  void setFont(const uint8_t *) {}
+  void setUTF8Print(bool enabled) { utf8Mode = enabled; }
   void setCursor(int16_t x, int16_t y) { cx = x; cy = y; }
 
   void drawChar(char ch, int x, int y) {
@@ -154,7 +158,21 @@ public:
     drawChar(ch, cx, cy);
     cx += 6 * textSize;
   }
-  void print(const char *s) { while (*s) print(*s++); }
+  void print(const char *s) {
+    while (*s) {
+      uint8_t ch = (uint8_t)*s++;
+      if (utf8Mode && ch >= 0x80) {
+        uint8_t more = (ch >= 0xF0) ? 3 : (ch >= 0xE0) ? 2 : 1;
+        while (more-- && *s && (((uint8_t)*s & 0xC0) == 0x80)) ++s;
+        // The desktop stub uses a visible CJK placeholder. The board uses the
+        // real U8g2 CJK glyph table supplied by Arduino_GFX.
+        drawRect(cx, cy, 7 * textSize, 7 * textSize, textColor);
+        cx += 8 * textSize;
+      } else {
+        print((char)ch);
+      }
+    }
+  }
   template <typename... A> void printf(const char *f, A... a) {
     char buf[256];
     snprintf(buf, sizeof(buf), f, a...);

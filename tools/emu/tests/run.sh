@@ -36,10 +36,13 @@ bash "$EMU/build.sh" >/dev/null
 # it is declared. That shipped once. If arduino-cli is installed, the firmware
 # build is the one that decides.
 if command -v arduino-cli >/dev/null; then
+  if ! arduino-cli lib list | grep -qi "U8g2"; then
+    arduino-cli lib install U8g2
+  fi
   FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
-  if ! arduino-cli compile --fqbn "$FQBN" "$ROOT" >/dev/null 2>"$OUT_FW"; then
+  if ! arduino-cli compile --fqbn "$FQBN" "$ROOT" >"$OUT_FW" 2>&1; then
     echo "=== THE FIRMWARE DOES NOT COMPILE (the emulator does; that is not the same thing)"
-    grep -i error "$OUT_FW" | head -5
+    if grep -qi error "$OUT_FW"; then grep -i error "$OUT_FW" | head -20; else tail -60 "$OUT_FW"; fi
     exit 1
   fi
 fi
@@ -66,6 +69,12 @@ for src in "$HERE"/*_test.cpp; do
   name="$(basename "$src" .cpp)"
   [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]] && continue
   extra=()
+  # The optional PMD sprite pack is not stored in this repository. Only run
+  # the file-loading test when the user/CI has supplied that external asset pack.
+  if [ "$name" = "sprite_test" ] && [ ! -d "$ROOT/tools/sdcard/mons" ]; then
+    echo "=== sprite_test: SKIPPED (optional tools/sdcard/mons pack not present)"
+    continue
+  fi
   needs_sketch "$name" && extra=("$EMU/sketch.cpp" "$EMU/host_impl.cpp" "$EMU/font.cpp" "$EMU/clock.cpp")
   needs_host "$name" && extra=("$EMU/host_impl.cpp" "$EMU/font.cpp")
   srcs=("${CORE[@]}")

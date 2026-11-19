@@ -63,7 +63,12 @@ def write_pak(out, files):
 def main():
     files = sorted(glob.glob(os.path.join(MONS, '*.bin')))
     if not files:
-        raise SystemExit('no hay sprites en ' + MONS)
+        # Sprite bundles are published as GitHub Release assets and are not
+        # checked into this repository. Firmware/web builds must still succeed
+        # when the optional local source sprites are absent (as in CI clones).
+        print('No local sprites found in ' + MONS)
+        print('Skipping optional .pak generation; the installer uses published release bundles.')
+        return
     # Files with no dex number in the name -- thumbs.bin -- are SHARED, not part
     # of any region. Splitting by dex range alone dropped thumbs.bin on the
     # floor and the board says so at boot: "sin thumbs.bin (galeria sin

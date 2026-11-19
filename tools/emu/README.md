@@ -12,7 +12,8 @@ tools/emu/tamapoke-emu --scale 2 --fast 60
 
 It compiles `TamaPoke.ino`, `pet.cpp`, `i18n.cpp` and `party.cpp` **unmodified**.
 Only the hardware layer is replaced, so what you see is what the panel draws —
-the same 466×466 RGB565 framebuffer, the same 5×7 font, the same code paths.
+the same 466×466 RGB565 framebuffer and code paths. The desktop stub uses a
+simple placeholder for CJK glyphs; the board renders the real U8g2 CJK font.
 
 ## Why
 
@@ -72,7 +73,7 @@ sips -s format png shot.ppm --out shot.png     # macOS; or use ImageMagick
 | `Arduino_GFX_Library.h` | the canvas — every primitive the sketch uses, into an RGB565 buffer |
 | `TouchDrvCSTXXX.hpp` | the CST9217, fed by the mouse |
 | `host_impl.cpp` | SD (reads sprites from disk), RTC, battery, audio |
-| `font.cpp` | the classic 5×7 GFX glyphs, so text metrics match exactly |
+| `font.cpp` | the classic 5×7 GFX glyphs and desktop CJK placeholder |
 | `genproto.py` | the prototypes the Arduino build normally generates for you |
 
 Everything except `font.cpp` and `genproto.py` is a stub; the game itself is the
