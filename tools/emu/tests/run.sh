@@ -42,7 +42,7 @@ if command -v arduino-cli >/dev/null; then
   FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
   if ! arduino-cli compile --fqbn "$FQBN" "$ROOT" >/dev/null 2>"$OUT_FW"; then
     echo "=== THE FIRMWARE DOES NOT COMPILE (the emulator does; that is not the same thing)"
-    grep -i error "$OUT_FW" | head -5
+    if ! grep -i error "$OUT_FW" | head -20; then tail -60 "$OUT_FW"; fi
     exit 1
   fi
 fi
