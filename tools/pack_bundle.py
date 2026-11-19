@@ -17,9 +17,11 @@ Formato TPAK (little-endian):
 El instalador (web/index.html) lo descarga, lo parte por el indice y manda cada
 fichero a la placa con el protocolo PUT (igual que tools/send_sd.py).
 """
+import argparse
 import glob
 import os
 import struct
+import zlib
 
 HERE = os.path.dirname(__file__)
 MONS = os.path.join(HERE, 'sdcard', 'mons')
@@ -44,23 +46,98 @@ def dex_of(path):
     return int(digits) if digits else 0
 
 
-def write_pak(out, files):
-    names = ['mons/' + os.path.basename(f) for f in files]
-    blobs = [open(f, 'rb').read() for f in files]
+def wrap_tpkz(blob, level=9):
+    """Wrap raw TPK2/TPTH/TPK1 bytes in a TPKZ (zlib) container if smaller."""
+    if blob[:4] == b'TPKZ':
+        return blob
+    comp = zlib.compress(blob, level)
+    wrapped = b'TPKZ' + struct.pack('<I', len(blob)) + comp
+    return wrapped if len(wrapped) < len(blob) else blob
+
+
+def read_pak(path):
+    data = open(path, 'rb').read()
+    if data[:4] != b'TPAK':
+        raise ValueError(f'{path}: invalid TPAK header')
+    count, = struct.unpack_from('<H', data, 4)
+    off = 6
+    entries = []
+    for _ in range(count):
+        nl = data[off]
+        off += 1
+        name = data[off:off + nl].decode()
+        off += nl
+        sz, = struct.unpack_from('<I', data, off)
+        off += 4
+        entries.append((name, sz))
+    items = []
+    for name, sz in entries:
+        items.append((name, data[off:off + sz]))
+        off += sz
+    if off != len(data):
+        raise ValueError(f'{path}: trailing bytes ({len(data) - off})')
+    return items
+
+
+def write_pak_items(out, items):
     with open(out, 'wb') as o:
         o.write(b'TPAK')
-        o.write(struct.pack('<H', len(files)))
-        for name, blob in zip(names, blobs):
+        o.write(struct.pack('<H', len(items)))
+        for name, blob in items:
             nb = name.encode()
             o.write(struct.pack('<B', len(nb)))
             o.write(nb)
             o.write(struct.pack('<I', len(blob)))
-        for blob in blobs:
+        for _, blob in items:
             o.write(blob)
-    return sum(len(b) for b in blobs)
+    return sum(len(b) for _, b in items)
+
+
+def write_pak(out, files, compress=True):
+    items = []
+    for f in files:
+        blob = open(f, 'rb').read()
+        if compress:
+            blob = wrap_tpkz(blob)
+        items.append(('mons/' + os.path.basename(f), blob))
+    return write_pak_items(out, items)
+
+
+def repack_web(compress=True):
+    paks = sorted(glob.glob(os.path.join(WEB, 'sprites-*.pak')))
+    if not paks:
+        raise SystemExit('no sprites-*.pak found in ' + WEB)
+    for pak in paks:
+        old_size = os.path.getsize(pak)
+        items = read_pak(pak)
+        new_items = []
+        for name, blob in items:
+            if compress:
+                blob = wrap_tpkz(blob)
+            elif blob[:4] == b'TPKZ':
+                raw_len, = struct.unpack_from('<I', blob, 4)
+                blob = zlib.decompress(blob[8:])
+                assert len(blob) == raw_len
+            new_items.append((name, blob))
+        write_pak_items(pak, new_items)
+        new_size = os.path.getsize(pak)
+        print(f'{os.path.normpath(pak)}: {len(new_items)} files, '
+              f'{old_size / 1048576:.2f} MB -> {new_size / 1048576:.2f} MB')
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--raw', action='store_true',
+                    help='pack uncompressed sprites instead of TPKZ')
+    ap.add_argument('--repack-web', action='store_true',
+                    help='recompress existing web/sprites-*.pak files in-place')
+    args = ap.parse_args()
+    compress = not args.raw
+
+    if args.repack_web:
+        repack_web(compress=compress)
+        return
+
     files = sorted(glob.glob(os.path.join(MONS, '*.bin')))
     if not files:
         raise SystemExit('no hay sprites en ' + MONS)
@@ -84,15 +161,15 @@ def main():
             print(f'{name}: no sprites packed yet, skipped')
             continue
         out = os.path.join(WEB, f'sprites-{name}.pak')
-        total = write_pak(out, mine)
+        total = write_pak(out, mine, compress=compress)
         size = os.path.getsize(out)
         flag = '  !! OVER GITHUB LIMIT' if size > GITHUB_LIMIT else ''
-        print(f'{os.path.normpath(out)}: {len(mine)} sprites, '
-              f'{total / 1048576:.1f} MB datos ({size / 1048576:.1f} MB total){flag}')
+        mode = 'TPKZ' if compress else 'raw'
+        print(f'{os.path.normpath(out)} [{mode}]: {len(mine)} sprites, '
+              f'{total / 1048576:.2f} MB datos ({size / 1048576:.2f} MB total){flag}')
         made += 1
     if not made:
         raise SystemExit('nothing packed')
-    packed = sum(1 for _ in glob.glob(os.path.join(MONS, '*.bin')))
     print(f'{len(shared)} shared file(s) went into EVERY pack, so any single region works alone')
 
 

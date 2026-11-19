@@ -2,6 +2,7 @@
 #include "pin_config.h"  // define XPOWERS_CHIP_AXP2101
 #include <Wire.h>
 #include <time.h>
+#include <sys/time.h>
 #include <SensorPCF85063.hpp>
 #include <XPowersLib.h>
 
@@ -10,14 +11,25 @@ static XPowersPMU pmu;
 static bool rtcOk = false;
 static bool pmuOk = false;
 
+// Minimum valid epoch (2025-01-01 00:00:00 UTC) for internal RTC fallback
+static constexpr uint32_t MIN_VALID_EPOCH = 1735689600UL;
+
 bool rtcBegin() {
   rtcOk = rtc.begin(Wire, IIC_SDA, IIC_SCL);
-  if (!rtcOk) Serial.println("PCF85063 no detectado");
+  if (!rtcOk) Serial.println("PCF85063 not found; using ESP32-S3 internal RTC");
   return rtcOk;
 }
 
 uint32_t rtcEpoch() {
-  if (!rtcOk) return 0;
+  if (!rtcOk) {
+    // 1.75C has no external PCF85063; fall back to ESP32-S3 internal RTC so the
+    // clock setting, day/night cycle, and soft-reboot timekeeping still work.
+    struct timeval tv;
+    if (gettimeofday(&tv, nullptr) == 0 && (uint32_t)tv.tv_sec >= MIN_VALID_EPOCH) {
+      return (uint32_t)tv.tv_sec;
+    }
+    return 0;
+  }
   RTC_DateTime t = rtc.getDateTime();
   if (t.getYear() < 2025 || t.getYear() > 2120) return 0;  // sin hora valida
   struct tm tmv = {};
@@ -32,6 +44,8 @@ uint32_t rtcEpoch() {
 }
 
 void rtcSetEpoch(uint32_t e) {
+  struct timeval tv = { (time_t)e, 0 };
+  settimeofday(&tv, nullptr);
   if (!rtcOk) return;
   time_t tt = e;
   struct tm tmv;
@@ -46,17 +60,20 @@ bool batBegin() {
   return pmuOk;
 }
 
-// Enciende la alimentacion de la AMOLED. En la Waveshare 1.75 el panel (OLED VDD)
-// cuelga del rail BLDO1 a 3.3V del AXP2101. El firmware daba por hecho que estaba
-// encendido; si el PMU se resetea (drenaje total), BLDO1 queda OFF y la pantalla
-// se ve negra aunque el resto funcione. Hay que llamarla ANTES de gfx->begin().
+// Enable peripheral power rails on the AXP2101 before gfx->begin() and audioBegin().
+// On Waveshare 1.75C (per official schematic):
+//   - DCDC1 (3.3 V) = VCC3V3 (ESP32-S3 + AMOLED display VDD)
+//   - ALDO1 (3.3 V) = A3V3 (ES8311 audio codec + ES7210 ADC)
+//   - BLDO1 is NC on 1.75C (used only on original 1.75).
 void pmuEnablePanel() {
   if (!pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) {
     Serial.println("AXP2101 no detectado (pmuEnablePanel)");
     return;
   }
-  pmu.setBLDO1Voltage(3300);   // OLED VDD
-  pmu.enableBLDO1();
+  pmu.setDC1Voltage(3300);     // VCC3V3 (MCU + AMOLED VDD)
+  pmu.enableDC1();
+  pmu.setALDO1Voltage(3300);   // A3V3 (ES8311/ES7210 audio rails)
+  pmu.enableALDO1();
 }
 
 // el estado de energia (I2C) se cachea ~2 s: leerlo en cada frame del loop

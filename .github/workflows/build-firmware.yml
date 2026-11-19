@@ -2,7 +2,7 @@ name: Build ESP32-S3 Firmware (.bin) & Deploy Web Installer
 
 on:
   push:
-    branches: [main, zhtz]
+    branches: [main, zhtz, zhtz-1.75c]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -18,14 +18,14 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-${{ github.ref_name }}"
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FQBN: "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
+      FQBN: "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PSRAM=opi,PartitionScheme=app5M_little24M_32MB"
 
     steps:
       - name: Checkout repository
@@ -144,11 +144,11 @@ jobs:
           if-no-files-found: error
 
       - name: Setup GitHub Pages
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
         uses: actions/configure-pages@v5
 
       - name: Upload web installer site for GitHub Pages
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: TamaPoke/web
@@ -166,7 +166,7 @@ jobs:
           fi
 
   deploy-pages:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
     needs: build
     runs-on: ubuntu-latest
     environment:

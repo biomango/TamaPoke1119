@@ -12,7 +12,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
+FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=32M,PSRAM=opi,PartitionScheme=app5M_little24M_32MB"
 PORT=""
 MONITOR=0
 while [ $# -gt 0 ]; do

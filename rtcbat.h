@@ -1,14 +1,14 @@
 #pragma once
 #include <Arduino.h>
 
-// RTC PCF85063: hora persistente mientras la placa tenga alimentacion
+// RTC PCF85063 (or internal ESP32-S3 RTC fallback on 1.75C)
 bool rtcBegin();
 uint32_t rtcEpoch();             // segundos unix; 0 si el RTC no es valido
 void rtcSetEpoch(uint32_t e);
 
 // PMU AXP2101: estado de la bateria
 bool batBegin();
-void pmuEnablePanel();           // enciende BLDO1 (OLED VDD 3.3V); llamar antes de gfx->begin()
+void pmuEnablePanel();           // enables 3.3V rails (DC1 + ALDO1 on 1.75C); call before gfx->begin()
 int batPercent();                // 0-100, -1 si no hay bateria conectada
 bool batCharging();
 bool usbPresent();

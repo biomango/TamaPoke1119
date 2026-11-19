@@ -88,7 +88,7 @@ def main():
         print("could not find a partition table in anything the manifest ships")
         return 1
 
-    keep = [(l, o, s) for (l, o, s) in table if l in ("nvs", "ffat")]
+    keep = [(l, o, s) for (l, o, s) in table if l in ("nvs", "ffat", "spiffs")]
     print("what the installer writes:")
     for path, off, size in sorted(parts, key=lambda p: p[1]):
         print("  0x%06X..0x%06X  %s" % (off, off + size, path))

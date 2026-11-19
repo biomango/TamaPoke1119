@@ -1,11 +1,11 @@
 // TamaPoke - tamagotchi pixel art inspirado en la gen 1
-// para Waveshare ESP32-S3-Touch-AMOLED-1.75
+// para Waveshare ESP32-S3-Touch-AMOLED-1.75C (32 MB Flash, LittleFS)
 //
 // Librerias (Library Manager o repo de Waveshare):
 //   - "GFX Library for Arduino" (moononournation), con soporte CO5300 QSPI
 //   - "SensorLib" (Lewis He), driver tactil CST9217
 //
-// Placa: ESP32S3 Dev Module | Flash 16MB | PSRAM: OPI PSRAM | USB CDC On Boot: Enabled
+// Board: ESP32S3 Dev Module | Flash 32MB | Partition: 32M Flash (4.8MB APP/22MB LittleFS) | PSRAM: OPI PSRAM | USB CDC On Boot: Enabled
 //
 // Los sprites y la tabla de especies se generan con tools/sprites.py (emit).
 
