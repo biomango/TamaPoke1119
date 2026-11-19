@@ -21,6 +21,7 @@ bool sdDirty = false;
 // here and no PUT path, so the flag never sets and the scan is a no-op -- but both
 // symbols are referenced from loop(), so they have to exist to link.
 bool sdArtDirty = false;
+bool sdThumbsDirty = false;
 void sdScanRegionArt(bool) {}
 SdThumbs thumbs;
 
@@ -91,14 +92,14 @@ void PmdMon::unload() {
   loaded = false;
 }
 
-bool SdThumbs::load() {
+bool SdThumbs::load(bool verbose) {
   uint32_t size = 0;
   data = slurp(g_spriteDir + "/thumbs.bin", &size);
-  if (!data) { Serial.println("emu: no thumbs.bin"); return false; }
+  if (!data) { if (verbose) Serial.println("emu: no thumbs.bin"); return false; }
   if (memcmp(data, "TPTH", 4) != 0) { free(data); data = nullptr; return false; }
   memcpy(&count, data + 4, 2);
   loaded = true;
-  Serial.printf("emu: thumbnails loaded: %u\n", count);
+  if (verbose) Serial.printf("emu: thumbnails loaded: %u\n", count);
   return true;
 }
 

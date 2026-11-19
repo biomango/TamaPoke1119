@@ -353,6 +353,16 @@ public:
     eggTaps = 0;
     hatch();
   }
+  // Secret egg Pokedex picker: hatch directly into the chosen species while
+  // keeping the egg's natural shiny roll (eggShiny).
+  void hatchTo(int16_t dex) {
+    if (dex < 1 || dex > DEX_COUNT) return;
+    eggTarget = dex;
+    starterPick = false;
+    speciesId = -1;
+    eggTaps = 0;
+    hatch();
+  }
   // Capped at 100, the series' own ceiling. The cap is not cosmetic: ageMinutes
   // is never clamped, so without it 1 + ageMinutes/60 overflows this uint8_t
   // past ~10.6 days -- and the RTC catches up to 2 weeks offline, which lands on

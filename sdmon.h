@@ -55,7 +55,7 @@ struct SdThumbs {
   bool loaded = false;
   uint8_t *data = nullptr;
   uint16_t count = 0;
-  bool load();
+  bool load(bool verbose = true);
   const uint8_t *get(int16_t dex) const;  // blob: w,h,palCount,pal[],idx[]
 };
 extern SdThumbs thumbs;
@@ -88,3 +88,4 @@ extern bool sdDirty;  // true tras recibir archivos: recargar sprite
 // until the board was rebooted, which looked exactly like the download failing.
 // The main loop rescans when this is set; the transfer itself is never delayed.
 extern bool sdArtDirty;
+extern bool sdThumbsDirty;  // true after PUT /mons/thumbs.bin so gallery loads without reboot

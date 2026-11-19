@@ -106,6 +106,8 @@ uint8_t galleryRegion = 0;
 // changes region still works, but it is invisible, so on its own it meant the
 // Johto and Hoenn content looked absent.
 bool galleryPick = false;
+bool galleryEggPick = false;    // 10s hold on egg region pill: tap any species to hatch it now
+static constexpr uint32_t EGG_DEX_HOLD_MS = 10000;
 bool gymPick = false;
 uint8_t rpickPage = 0;      // the region chooser is paged; shared by all 3 modes
 int galleryPage = 0;        // GAL_PAGES paginas de GAL_PER_PAGE
@@ -330,6 +332,7 @@ uint8_t rpickModeNow();                       // which chooser is up, or 0xFF
 static bool rpickSwipe(int dir);              // true if it handled the gesture
 static int regionPickTap(int16_t x, int16_t y, uint8_t mode);
 static void drawEggRegion();          // defined with the egg screen helpers
+static bool inEggPill(int16_t x, int16_t y);
 static int eggRegionTap(int16_t x, int16_t y);
 static void drawBtlBack();
 static void btlLinkPoll();   // defined with the battle code, called from render()
@@ -782,6 +785,11 @@ void loop() {
     sdArtDirty = false;
     sdScanRegionArt(false);
   }
+  if (sdThumbsDirty) {
+    sdThumbsDirty = false;
+    thumbs.load(false);
+    galleryDirty = true;
+  }
 
   // A farewell or release just finished: the creature is waiting for a slot.
   // With room it simply joins; with a full party the player is taken straight
@@ -958,6 +966,7 @@ void handleSerial() {
     Serial.println("DONE");
   } else if (line == "GAL") {
     galleryOpen = !galleryOpen;
+    galleryEggPick = false;
     galleryDetail = 0;
     galleryDirty = true;
     if (!galleryOpen) galleryPmd.unload();
@@ -1172,6 +1181,7 @@ void handleTouch() {
   } else if (pressed) {  // sigue apoyado
     tXl = x;
     tYl = y;
+    lastInteract = millis();  // keep screen awake during long holds
     // pulsacion larga sin moverse sobre el bicho -> dialogo de soltar
     //
     // Gated on the MAIN screen, not on a hand-maintained list of screens to
@@ -1188,6 +1198,43 @@ void handleTouch() {
         !pet.isEgg() && !confirmUntil && !pet.ceremony) {
       confirmUntil = millis() + 10000;
       holdFired = true;
+    }
+    // 10s hold on the egg's region button (or first-boot region row) ->
+    // open that region's Pokedex in egg-pick mode to hatch any chosen species.
+    if (!holdFired && !swallowGesture && millis() - tStart >= EGG_DEX_HOLD_MS &&
+        abs(tXl - tX0) < 45 && abs(tYl - tY0) < 45) {
+      uint8_t scr = uiCurrentScreen();
+      if (scr == SCR_MAIN && pet.isEgg() && !pet.awaitingStarter() &&
+          !confirmUntil && !pet.ceremony && inEggPill(tX0, tY0)) {
+        holdFired = true;
+        galleryOpen = true;
+        galleryEggPick = true;
+        galleryDetail = 0;
+        galleryPage = 0;
+        galleryDirty = true;
+        if (pet.region < GAL_REGIONS) {
+          galleryRegion = pet.region;
+          galleryPick = false;
+        } else {
+          galleryPick = true;
+          rpickPage = 0;
+        }
+        sfxPlay(SFX_MEDAL);
+      } else if (scr == SCR_REGION) {
+        holdFired = true;
+        int r = regionPickTap(tX0, tY0, RPICK_FOR_START);
+        if (r >= 0) {
+          pet.setRegion((uint8_t)r);
+          galleryOpen = true;
+          galleryEggPick = true;
+          galleryPick = false;
+          galleryRegion = (uint8_t)r;
+          galleryPage = 0;
+          galleryDetail = 0;
+          galleryDirty = true;
+          sfxPlay(SFX_MEDAL);
+        }
+      }
     }
   } else if (wasPressed) {  // levanta el dedo: resolver gesto
     lastInteract = millis();
@@ -1207,7 +1254,7 @@ void handleTouch() {
 void openClock();  // prototipo
 
 void onSwipeV(int dir) {
-  if (pet.awaitingStarter()) return;  // bloqueado durante la eleccion de inicial
+  if (pet.awaitingStarter() && !(galleryOpen && galleryEggPick)) return;  // bloqueado durante la eleccion de inicial
   if (uiCurrentScreen() == SCR_DEXPICK || uiCurrentScreen() == SCR_GYMPICK)
     return;                 // on the chooser, vertical does nothing: pick a row
   if (menuOpen) { menuOpen = false; return; }   // any swipe closes the menu
@@ -1547,7 +1594,7 @@ void onSwipe(int dir) {
   // own horizontal handler that would otherwise swallow the gesture. Paging a
   // screen by closing it is the bug this project shipped four times.
   if (rpickSwipe(dir)) return;
-  if (pet.awaitingStarter()) return;  // bloqueado durante la eleccion de inicial
+  if (pet.awaitingStarter() && !(galleryOpen && galleryEggPick)) return;  // bloqueado durante la eleccion de inicial
   if (menuOpen) { menuOpen = false; return; }   // any swipe closes the menu
   if (battleOpen) return;   // no swiping out of a fight
   if (pickOpen) {   // horizontal pages the candidates, as everywhere else
@@ -1633,6 +1680,25 @@ void onSwipe(int dir) {
 }
 
 void onTap(int16_t x, int16_t y) {
+  if (galleryOpen && galleryEggPick) {
+    if (galleryPick) {
+      int r = regionPickTap(x, y, RPICK_FOR_DEX);
+      if (r >= 0) {
+        galleryRegion = (uint8_t)r;
+        galleryPage = 0;
+        galleryDetail = 0;
+        galleryDirty = true;
+        galleryPick = false;
+        sfxPlay(SFX_TAP);
+      } else if (y > 380) {
+        galleryOpen = false;
+        galleryEggPick = false;
+      }
+      return;
+    }
+    galleryTap(x, y);
+    return;
+  }
   if (pet.awaitingStarter()) {  // primera partida: region y luego inicial
     if (!starterRegionDone) {
       int r = regionPickTap(x, y, RPICK_FOR_START);
@@ -1778,7 +1844,7 @@ void onTap(int16_t x, int16_t y) {
       sfxPlay(SFX_TAP);
       menuOpen = false;
       if (i == 0) { cardOpen = true; cardPage = 1; }   // straight to the stats page
-      else if (i == 1) { galleryOpen = true; galleryPick = true; galleryPage = 0; rpickPage = 0; galleryDetail = 0; galleryDirty = true; }
+      else if (i == 1) { galleryOpen = true; galleryEggPick = false; galleryPick = true; galleryPage = 0; rpickPage = 0; galleryDetail = 0; galleryDirty = true; }
       else if (i == 2) { openClock(); }
       else if (i == 3) {
         if (!pet.canRetireNow()) { sfxPlay(SFX_DENY); return; }
@@ -1826,6 +1892,7 @@ void onTap(int16_t x, int16_t y) {
         sfxPlay(SFX_TAP);
       } else if (y > 380) {
         galleryOpen = false;
+        galleryEggPick = false;
       }
       return;
     }
@@ -2108,6 +2175,7 @@ RTC_NOINIT_ATTR uint32_t gCrumbHeap;
 
 // Which screen is on the panel RIGHT NOW, in the same order render() tests.
 uint8_t uiCurrentScreen() {
+  if (galleryOpen && galleryEggPick) return galleryPick ? SCR_DEXPICK : SCR_GALLERY;
   if (pet.awaitingStarter()) return starterRegionDone ? SCR_STARTER : SCR_REGION;
   if (galleryOpen) return galleryPick ? SCR_DEXPICK : SCR_GALLERY;
   if (movePickOpen) return SCR_MOVEPICK;
@@ -2169,6 +2237,11 @@ void bootReport() {
 
 void render() {
   crumbDrop();   // so a crash can name the screen it happened on
+  if (galleryOpen && galleryEggPick) {
+    if (galleryPick) { renderRegionPick(RPICK_FOR_DEX); return; }
+    renderGallery();
+    return;
+  }
   if (pet.awaitingStarter()) {  // primera partida: region y luego inicial
     if (!starterRegionDone) renderRegionPick(RPICK_FOR_START);
     else renderStarterSelect();
@@ -4501,6 +4574,14 @@ static void drawEggRegion() {
   snprintf(l, sizeof(l), "%s >", regionNameLoc(pet.region));
   gfx->fillRoundRect(EGGREG_X, EGGREG_Y, EGGREG_W, EGGREG_H, 10, UI_WHITE);
   gfx->drawRoundRect(EGGREG_X, EGGREG_Y, EGGREG_W, EGGREG_H, 10, UI_INK);
+  if (wasPressed && !holdFired && !swallowGesture &&
+      abs(tXl - tX0) < 45 && abs(tYl - tY0) < 45 && inEggPill(tX0, tY0)) {
+    uint32_t held = millis() - tStart;
+    if (held >= 800) {
+      int bw = (int)((uint32_t)(EGGREG_W - 12) * (held > EGG_DEX_HOLD_MS ? EGG_DEX_HOLD_MS : held) / EGG_DEX_HOLD_MS);
+      gfx->fillRoundRect(EGGREG_X + 6, EGGREG_Y + EGGREG_H - 6, bw, 4, 2, UI_BAR_OK);
+    }
+  }
   uiTextCentered(EGGREG_X + EGGREG_W / 2, EGGREG_Y + 9, l, 2, UI_INK);
   uiTextCentered(CX, EGGREG_Y + EGGREG_H + 6, T(S_EGG_REGION), 1, UI_TRACK);
 }
@@ -4517,14 +4598,18 @@ void uiEggPillRect(int *x, int *y, int *w, int *h, bool hitArea) {
   if (h) *h = EGGREG_H + 2 * pad;
 }
 
+static bool inEggPill(int16_t x, int16_t y) {
+  int inset = EGGREG_PAD;
+  return x >= EGGREG_X - inset && x <= EGGREG_X + EGGREG_W + inset &&
+         y >= EGGREG_Y - inset && y <= EGGREG_Y + EGGREG_H + inset;
+}
+
 // 1 = cycled the region, -1 = a near miss that must NOT reach the egg, 0 = not
 // ours at all.
 static int eggRegionTap(int16_t x, int16_t y) {
   if (!pet.isEgg()) return 0;
-  int inset = EGGREG_PAD, guard = EGGREG_PAD + EGGREG_GUARD;
-  bool hit = x >= EGGREG_X - inset && x <= EGGREG_X + EGGREG_W + inset &&
-             y >= EGGREG_Y - inset && y <= EGGREG_Y + EGGREG_H + inset;
-  if (hit) {
+  int guard = EGGREG_PAD + EGGREG_GUARD;
+  if (inEggPill(x, y)) {
     pet.setRegion(nextAvailableRegion(pet.region));
     sfxPlay(SFX_TAP);
     return 1;
@@ -4644,6 +4729,15 @@ static void renderRegionPick(uint8_t mode) {
                (unsigned)(REGIONS[i].hi - REGIONS[i].lo + 1));
     if (sub[0]) {
       uiTextRight(RPICK_X + RPICK_W - 18, y + 22, sub, 2, UI_TRACK);
+    }
+    if (mode == RPICK_FOR_START && open && wasPressed && !holdFired && !swallowGesture &&
+        abs(tXl - tX0) < 45 && abs(tYl - tY0) < 45 &&
+        tX0 >= RPICK_X && tX0 <= RPICK_X + RPICK_W && tY0 >= y && tY0 <= y + RPICK_H) {
+      uint32_t held = millis() - tStart;
+      if (held >= 800) {
+        int bw = (int)((uint32_t)(RPICK_W - 16) * (held > EGG_DEX_HOLD_MS ? EGG_DEX_HOLD_MS : held) / EGG_DEX_HOLD_MS);
+        gfx->fillRoundRect(RPICK_X + 8, y + RPICK_H - 7, bw, 4, 2, UI_BAR_OK);
+      }
     }
   }
   if (forGyms) {
@@ -5186,9 +5280,15 @@ void renderGallery() {
   char head[48];
   uint8_t gr = galleryRegion % GAL_REGIONS;
   const RegionInfo &grg = REGIONS[gr];
-  snprintf(head, sizeof(head), "%s %u/%u", regionNameLoc(gr),
-           pet.registeredCountIn(grg.lo, grg.hi), (unsigned)GAL_SPAN);
-  uiTextCentered(CX, 36, head, 3, UI_INK);
+  if (galleryEggPick) {
+    snprintf(head, sizeof(head), "%s %s", regionNameLoc(gr), T(S_EGG_HDR));
+    int hts = (uiTextWidth(head, 3) <= 260) ? 3 : 2;
+    uiTextCentered(CX, hts == 3 ? 36 : 40, head, hts, UI_BAR_OK);
+  } else {
+    snprintf(head, sizeof(head), "%s %u/%u", regionNameLoc(gr),
+             pet.registeredCountIn(grg.lo, grg.hi), (unsigned)GAL_SPAN);
+    uiTextCentered(CX, 36, head, 3, UI_INK);
+  }
 
   for (int r = 0; r < 4; r++) {
     for (int c = 0; c < 4; c++) {
@@ -5197,7 +5297,7 @@ void renderGallery() {
       int x = GAL_X + c * GAL_CELL, y = GAL_Y + r * GAL_CELL;
       const uint8_t *t = thumbs.get(dex);
       if (t) {
-        drawThumb(t, x, y, 2, !pet.isRegistered(dex));
+        drawThumb(t, x, y, 2, galleryEggPick ? false : !pet.isRegistered(dex));
         if (pet.isShinyRegistered(dex)) {
           gfx->setTextColor(UI_BAR_WARN);
           gfx->setTextSize(2);
@@ -5232,6 +5332,7 @@ void galleryTap(int16_t x, int16_t y) {
   }
   if (y < 72) {  // tocar la cabecera = salir
     galleryOpen = false;
+    galleryEggPick = false;
     galleryPmd.unload();
     return;
   }
@@ -5239,6 +5340,16 @@ void galleryTap(int16_t x, int16_t y) {
   if (c < 0 || c > 3 || r < 0 || r > 3) return;
   int16_t dex = GAL_LO + galleryPage * GAL_PER_PAGE + r * 4 + c;
   if (dex > GAL_HI || dex > DEX_COUNT) return;
+  if (galleryEggPick) {
+    galleryOpen = false;
+    galleryEggPick = false;
+    galleryDetail = 0;
+    galleryPmd.unload();
+    starterRegionDone = true;
+    pet.hatchTo(dex);
+    ensureMon();
+    return;
+  }
   galleryDetail = dex;
   galleryPmd.load(dex, pet.isShinyRegistered(dex));
 }

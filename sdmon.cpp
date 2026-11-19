@@ -9,6 +9,7 @@
 bool sdReady = false;
 bool sdDirty = false;
 bool sdArtDirty = false;
+bool sdThumbsDirty = false;
 SdThumbs thumbs;
 
 // ---------------------------------------------------------------------------
@@ -181,7 +182,7 @@ void PmdMon::unload() {
   loaded = false;
 }
 
-bool SdThumbs::load() {
+bool SdThumbs::load(bool verbose) {
   if (!sdReady) return false;
   if (data) {
     free(data);
@@ -192,18 +193,18 @@ bool SdThumbs::load() {
   uint32_t size = 0;
   data = readSpriteFile("/mons/thumbs.bin", &size, 2UL * 1024 * 1024);
   if (!data) {
-    Serial.println("sin thumbs.bin (galeria sin miniaturas)");
+    if (verbose) Serial.println("sin thumbs.bin (galeria sin miniaturas)");
     return false;
   }
   if (size < 6 || memcmp(data, "TPTH", 4) != 0) {
-    Serial.println("thumbs.bin invalido");
+    if (verbose) Serial.println("thumbs.bin invalido");
     free(data);
     data = nullptr;
     return false;
   }
   memcpy(&count, data + 4, 2);
   loaded = true;
-  Serial.printf("miniaturas cargadas: %u (%u KB)\n", count, size / 1024);
+  if (verbose) Serial.printf("miniaturas cargadas: %u (%u KB)\n", count, size / 1024);
   return true;
 }
 
@@ -385,6 +386,7 @@ bool sdSerialCommand(const String &line) {
       // Flag it rather than rescanning here: this runs between the last data block
       // and the DONE the host is waiting on. loop() picks it up quietly.
       sdArtDirty = true;
+      if (path == "/mons/thumbs.bin") sdThumbsDirty = true;
     }
     Serial.println(ok ? "DONE" : "ERR");
     return true;
