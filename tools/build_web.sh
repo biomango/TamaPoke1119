@@ -18,7 +18,7 @@ echo "Fusionando binarios..."
 # esptool is not on PATH; the Arduino core ships one and that is the version
 # that matches the build we just made.
 ESPTOOL="$(ls ~/Library/Arduino15/packages/esp32/tools/esptool_py/*/esptool 2>/dev/null | head -1)"
-[ -z "$ESPTOOL" ] && ESPTOOL="$(find "$HOME/.arduino15/packages/esp32/tools/esptool_py" -type f \\( -name esptool -o -name esptool.py \\) 2>/dev/null | sort -V | tail -1)"
+[ -z "$ESPTOOL" ] && ESPTOOL="$(find "$HOME/.arduino15/packages/esp32/tools/esptool_py" -type f \( -name esptool -o -name esptool.py \) 2>/dev/null | sort -V | tail -1)"
 [ -z "$ESPTOOL" ] && ESPTOOL="$(command -v esptool.py || command -v esptool)"
 [ -z "$ESPTOOL" ] && { echo "no esptool found"; exit 1; }
 
