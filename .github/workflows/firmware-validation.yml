@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          path: TamaPoke
 
       - name: Install SDL2 for desktop tests
         run: |
@@ -34,9 +36,11 @@ jobs:
           arduino-cli lib install "GFX Library for Arduino" SensorLib XPowersLib U8g2
 
       - name: Run emulator and firmware tests
+        working-directory: TamaPoke
         run: bash tools/emu/tests/run.sh
 
       - name: Build flashable firmware bundle
+        working-directory: TamaPoke
         run: bash tools/build_web.sh
 
       - name: Upload firmware binaries
@@ -44,7 +48,7 @@ jobs:
         with:
           name: tamapoke-esp32s3-traditional-chinese
           path: |
-            web/firmware/*.bin
-            web/manifest.json
+            TamaPoke/web/firmware/*.bin
+            TamaPoke/web/manifest.json
           if-no-files-found: error
           retention-days: 30
