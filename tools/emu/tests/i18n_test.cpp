@@ -1,11 +1,6 @@
-// Checks the positional STRINGS table: a language row with too few entries is
-// zero-padded by the compiler with no diagnostic, which silently shifts every
-// string after the gap. Also enforces the ASCII-only rule (the bitmap font has
-// no glyphs for accents).
+// Checks every language row for complete, well-formed UTF-8 strings.
 #include "Arduino.h"
 #include "Preferences.h"
-// linked against the same core as every other suite, so it needs the same
-// hardware stubs even though it only exercises the string table
 uint32_t g_seed = 1;
 FakeSerial Serial; FakeESP ESP; FakeWire Wire;
 volatile int g_touchX = 0, g_touchY = 0;
@@ -20,19 +15,47 @@ void sfxPlay(uint8_t) {}
 #include <cstdio>
 #include <cstring>
 
-// STRINGS is file-static, so go through the same accessor the firmware uses.
-static const char *LANG[] = { "ES", "EN", "FR", "DE", "IT", "PT" };
+static const char *LANG[] = { "ES", "EN", "FR", "DE", "IT", "PT", "ZH-TW" };
+
+static bool validUtf8(const char *s) {
+  const unsigned char *p = (const unsigned char *)s;
+  while (*p) {
+    if (*p < 0x80) { ++p; continue; }
+    unsigned need = (*p >= 0xC2 && *p <= 0xDF) ? 1 :
+                    (*p >= 0xE0 && *p <= 0xEF) ? 2 :
+                    (*p >= 0xF0 && *p <= 0xF4) ? 3 : 99;
+    if (need == 99) return false;
+    ++p;
+    for (unsigned i = 0; i < need; ++i, ++p)
+      if ((*p & 0xC0) != 0x80 || !*p) return false;
+  }
+  return true;
+}
 
 int main() {
   int bad = 0;
-  for (int l = 0; l < LANG_COUNT; l++)
+  for (int l = 0; l < LANG_COUNT; l++) {
+    setLang((Lang)l);
     for (int s = 0; s < STR_COUNT; s++) {
-      setLang((Lang)l);
       const char *v = T((StrId)s);
-      if (!v) { printf("NULL  %s index %d\n", LANG[l], s); bad++; continue; }
-      for (const unsigned char *p = (const unsigned char *)v; *p; p++)
-        if (*p > 0x7F) { printf("NON-ASCII  %s index %d: \"%s\"\n", LANG[l], s, v); bad++; break; }
+      if (!v || !validUtf8(v)) {
+        printf("INVALID  %s index %d: %s\n", LANG[l], s, v ? v : "(null)");
+        bad++;
+      }
     }
-  printf("%s: %d languages x %d strings\n", bad ? "FAIL" : "PASS", LANG_COUNT, STR_COUNT);
+    for (int m = 0; m < MED_COUNT; ++m) {
+      if (!validUtf8(medalName(m)) || !validUtf8(medalLabel(m)) || !validUtf8(medalDesc(m))) {
+        printf("INVALID MEDAL  %s index %d\n", LANG[l], m);
+        bad++;
+      }
+    }
+  }
+  setLang(LANG_ZH_TW);
+  if (strcmp(T(S_MENU_TITLE), "選單") != 0) {
+    printf("Traditional Chinese language selection failed\n");
+    bad++;
+  }
+  printf("%s: %d languages x %d strings, UTF-8 checked\n",
+         bad ? "FAIL" : "PASS", LANG_COUNT, STR_COUNT);
   return bad ? 1 : 0;
 }
