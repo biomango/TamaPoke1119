@@ -383,7 +383,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "開始對戰",
     "尚未解鎖",
     "寶可夢",
-    "擊敗了 %s！",
+    "對手 %s 被擊敗了！",
     "獲得新徽章！",
     "音量 %u",
     "收納箱 %u/%u",
