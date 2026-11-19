@@ -11,6 +11,8 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#define U8G2_USE_LARGE_FONTS
+#include <U8g2lib.h>
 #include "Arduino_GFX_Library.h"
 #include "TouchDrvCSTXXX.hpp"
 #include "pin_config.h"
@@ -47,6 +49,35 @@ Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, panel);
 
 TouchDrvCST92xx touch;
 Pet pet;
+
+// Count UTF-8 code points rather than bytes when centring UI labels.
+// ASCII strings retain their original width calculation.
+static size_t utf8Length(const char *s) {
+  size_t n = 0;
+  if (!s) return 0;
+  while (*s) {
+    uint8_t c = (uint8_t)*s++;
+    if ((c & 0xC0) != 0x80) ++n;
+  }
+  return n;
+}
+#define strlen utf8Length
+
+// Arduino_GFX exposes its U8g2 CJK fonts when the U8g2 library is installed.
+// Only the Traditional Chinese locale uses this font; all other locales keep
+// the original compact 5x7 bitmap font.
+static void applyLanguageFont() {
+  static int8_t applied = -1;
+  if (applied == (int8_t)gLang) return;
+  if (gLang == LANG_ZH_TW) {
+    gfx->setFont(u8g2_font_chill7_h_cjk);
+    gfx->setUTF8Print(true);
+  } else {
+    gfx->setUTF8Print(false);
+    gfx->setFont();
+  }
+  applied = (int8_t)gLang;
+}
 
 // sprite animado de la SD para la especie actual (si existe el archivo)
 SdMon mon;          // sprite B/N (respaldo y minijuego si no hay PMD)
@@ -2175,6 +2206,7 @@ void bootReport() {
 }
 
 void render() {
+  applyLanguageFont();
   crumbDrop();   // so a crash can name the screen it happened on
   if (pet.awaitingStarter()) {  // primera partida: region y luego inicial
     if (!starterRegionDone) renderRegionPick(RPICK_FOR_START);
@@ -2797,7 +2829,7 @@ void drawClockBtn(int x, int y, const char *l) {
 #define VOL_MINUS_X 146
 #define VOL_PLUS_X 276
 #define VOL_BTN_W 48
-static const char *const LANG_CODES[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT" };
+static const char *const LANG_CODES[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "繁中" };
 
 void renderClock() {
   gfx->fillScreen(RGB565_BLACK);
