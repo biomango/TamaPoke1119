@@ -1,138 +1,496 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TamaPoke · Installer</title>
+<title>TamaPoke · 網頁自動燒錄器</title>
 <style>
-  :root { --bg:#f2efe1; --ink:#2a2a36; --accent:#4f93c4; --ok:#58b868; --bad:#e8503a; --track:#d8d2bd; }
+  :root {
+    --bg: #f2efe1;
+    --card: #ffffff;
+    --ink: #2a2a36;
+    --muted: #6b6b76;
+    --accent: #3d7fb0;
+    --accent-hover: #326a94;
+    --ok: #47a458;
+    --bad: #dc4a35;
+    --warn-bg: #fff6f4;
+    --safe-bg: #f2fbf4;
+    --track: #d8d2bd;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, sans-serif; background:var(--bg);
-         color:var(--ink); line-height:1.6; }
-  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-  h1 { font-size: 2rem; margin: 0 0 .25rem; }
-  h2 { font-size: 1.25rem; margin: 2.5rem 0 .5rem; }
-  .sub { color:#6b6b76; margin: 0 0 1.5rem; }
-  .step { background:#fff; border:1px solid var(--track); border-radius:14px; padding:1.25rem 1.5rem; margin: 1rem 0; }
-  .num { display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff;
-         align-items:center; justify-content:center; font-weight:600; margin-right:.5rem; font-size:.9rem; }
-  button { font: inherit; font-weight:500; padding:.6rem 1.2rem; border-radius:10px; border:1px solid var(--ink);
-           background:#fff; cursor:pointer; }
-  button:hover { background:var(--bg); }
-  button:disabled { opacity:.5; cursor:default; }
-  esp-web-install-button { display:inline-block; }
-  esp-web-install-button[install-unsupported] { display:none; }
-  .unsupported { display:none; color:var(--bad); font-weight:500; }
-  .row { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
-  #log { font-family: ui-monospace, monospace; font-size:.85rem; background:#1b1b25; color:#d8dcf0;
-         border-radius:10px; padding:.75rem 1rem; margin-top:1rem; max-height:220px; overflow:auto; white-space:pre-wrap; display:none; }
-  .bar { height:10px; background:var(--track); border-radius:5px; overflow:hidden; margin-top:.75rem; display:none; }
-  .bar > div { height:100%; width:0; background:var(--ok); transition: width .15s; }
-  code { background:#0001; padding:.1em .4em; border-radius:5px; }
-  a { color:var(--accent); }
-  .note { font-size:.9rem; color:#6b6b76; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+  h1 { font-size: 2rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.2rem; margin: 2rem 0 .65rem; display: flex; align-items: center; }
+  .sub { color: var(--muted); margin: 0 0 .85rem; }
+  .badges { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .82rem; font-weight: 600; padding: .25rem .65rem;
+    border-radius: 999px; background: #fff; border: 1px solid var(--track); color: var(--ink);
+  }
+  .badge.ok { background: var(--safe-bg); border-color: #b7e2bf; color: #246631; }
+  .lang-btn {
+    font: inherit; font-size: .88rem; font-weight: 600;
+    padding: .4rem .85rem; border-radius: 999px;
+    border: 1px solid var(--track); background: #fff; color: var(--ink); cursor: pointer;
+  }
+  .lang-btn:hover { background: #ebe6d3; }
+  .step {
+    background: var(--card); border: 1px solid var(--track);
+    border-radius: 14px; padding: 1.25rem 1.4rem; margin: .85rem 0;
+    box-shadow: 0 2px 8px rgba(42, 42, 54, 0.04);
+  }
+  .num {
+    display: inline-flex; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff; align-items: center; justify-content: center;
+    font-weight: 700; margin-right: .6rem; font-size: .9rem; flex-shrink: 0;
+  }
+  button {
+    font: inherit; font-weight: 600; padding: .6rem 1.15rem; border-radius: 10px;
+    border: 1px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer;
+    transition: background .12s, transform .05s;
+  }
+  button:hover:not(:disabled) { background: var(--bg); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    padding: .75rem 1.4rem; font-size: 1.02rem;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.safe { background: var(--ok); border-color: var(--ok); color: #fff; }
+  button.safe:hover:not(:disabled) { background: #3b8e4a; }
+  esp-web-install-button { display: inline-block; }
+  esp-web-install-button[install-unsupported] { display: none; }
+  .unsupported {
+    display: none; background: var(--warn-bg); border: 1px solid #f0b5ac;
+    border-radius: 12px; padding: .9rem 1.1rem; color: var(--bad); font-weight: 600; margin: 1rem 0;
+  }
+  .callout {
+    border-left: 4px solid var(--bad); background: var(--warn-bg);
+    border-radius: 0 10px 10px 0; padding: .85rem 1rem; margin: .9rem 0 0; font-size: .93rem;
+  }
+  .callout.safe { border-left-color: var(--ok); background: var(--safe-bg); }
+  .row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+  .logbox {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .83rem;
+    background: #1b1b25; color: #d8dcf0; border-radius: 10px;
+    padding: .75rem 1rem; margin-top: .85rem; max-height: 220px;
+    overflow: auto; white-space: pre-wrap; display: none;
+  }
+  .bar { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; margin-top: .75rem; display: none; }
+  .bar > div { height: 100%; width: 0; background: var(--ok); transition: width .15s; }
+  code { background: rgba(0,0,0,.06); padding: .12em .4em; border-radius: 5px; font-size: .9em; }
+  a { color: var(--accent); }
+  .note { font-size: .9rem; color: var(--muted); }
+  details { margin-top: .9rem; }
+  details summary { cursor: pointer; font-weight: 600; color: var(--accent); user-select: none; }
+  .bin-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .5rem; margin-top: .7rem; }
+  .bin-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .45rem .7rem; border: 1px solid var(--track); border-radius: 8px;
+    background: #faf8f0; font-size: .86rem; text-decoration: none; color: var(--ink);
+  }
+  .bin-item:hover { background: var(--bg); }
+  .bin-item span { color: var(--muted); font-family: ui-monospace, monospace; font-size: .8rem; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🐢 TamaPoke</h1>
-  <p class="sub">A 386-Pokémon tamagotchi for the Waveshare ESP32-S3-Touch-AMOLED-1.75.
-     Install it from your browser — no Arduino, no drivers.</p>
-
-  <p class="unsupported" id="unsupported">
-    ⚠️ Your browser doesn't support Web Serial. Use <b>Chrome</b> or <b>Edge</b> on a computer.
-  </p>
-
-  <div class="step" style="border-left:4px solid #e8503a;background:#fff6f4">
-    <p><b>⚠️ Board not showing up? Read this first — it is almost always this.</b></p>
-    <p>A brand-new board <b>does not appear as a serial port at all</b>. The firmware it
-       ships with never switches USB on, so your computer sees nothing and it looks like a
-       dead board or a broken cable. It is neither. Put it in <b>download mode</b>:</p>
-    <p style="font-size:1.05em"><b>hold BOOT&nbsp;→ tap RESET&nbsp;→ let go of BOOT</b></p>
-    <p class="note">The two small buttons next to the USB-C socket. Nothing on screen will
-       change — that is normal. Now press install and the port will be there.
-       After TamaPoke is on it, this is never needed again.</p>
-    <p class="note">Still nothing? Use a cable that carries <b>data</b> (a charge-only USB-C
-       cable powers the board perfectly and carries nothing), and plug <b>straight into your
-       computer</b> rather than through a hub.</p>
-  </div>
-
-  <h2><span class="num">1</span>Flash the firmware</h2>
-  <div class="step">
-    <p>Plug the board in via USB and press install. Pick the port and wait.
-       Takes about a minute. No drivers needed on any OS.</p>
-    <esp-web-install-button manifest="manifest.json">
-      <button slot="activate">⚡ Install TamaPoke</button>
-      <span slot="unsupported">Browser not supported (use Chrome/Edge).</span>
-      <span slot="not-allowed">Needs HTTPS.</span>
-    </esp-web-install-button>
-    <p class="note" style="border-left:4px solid #e8503a;padding-left:10px">
-       🔄 <b>Updating? Leave "Erase device" unchecked.</b> The installer asks
-       once, with the box already unchecked — click <b>Next</b> without ticking
-       it and your creature, Pokédex and badges all survive, because the
-       firmware is written around the save rather than over it. Tick that box
-       and everything is gone, with no undo. The sprites on the microSD are
-       untouched either way.<br><br>
-       <b>Installers before v2.7 erased it every time, without asking.</b>
-       They shipped one image covering the whole start of flash, the save
-       included, and were configured to wipe the chip before writing. Both are
-       fixed here. Even so, <code>EXPORT</code> on the serial console is the
-       only real safety net: it prints your whole save as a block of
-       <code>IMPORT</code> lines, and pasting that block back restores it.
-       Worth doing before any update you care about.<br><br>
-       A fresh board with nothing on it can be erased safely, and on a board
-       that has never run TamaPoke it makes no difference either way.</p>
-  </div>
-
-  <h2><span class="num">2</span>Load the sprites onto the microSD</h2>
-  <div class="step">
-    <p>Put a microSD into the board (it formats itself). Press <b>Connect board</b>,
-       then a region. Any one of them works on its own — pick Johto or Hoenn if
-       that is the game you want — and the others can be added later without
-       redoing this one. Kanto is simply the usual place to start.</p>
-    <p class="note">⏱️ <b>This part is slow, and that is normal.</b> The sprites go over
-       the USB serial link, so Kanto's 40 MB takes roughly <b>10–15 minutes</b>. Leave the
-       tab open and the card in. The progress bar moves the whole time.</p>
-    <p class="note">Close the step-1 install tab first (only one program can use
-       the port at a time).</p>
-    <div class="row">
-      <button id="connect">🔌 Connect board</button>
-      <button id="auto" data-region="kanto" disabled>⬇️ Kanto sprites (~40 MB)</button>
-      <button id="autoj" data-region="johto" disabled>⬇️ Johto (~27 MB)</button>
-      <button id="autoh" data-region="hoenn" disabled>⬇️ Hoenn (~38 MB)</button>
-      <button id="autos" data-region="sinnoh" disabled>⬇️ Sinnoh (~33 MB)</button>
-      <button id="autou" data-region="unova" disabled>⬇️ Unova (~40 MB)</button>
-      <button id="autok" data-region="kalos" disabled>⬇️ Kalos (~21 MB)</button>
-      <button id="autoa" data-region="alola" disabled>⬇️ Alola (~24 MB)</button>
+  <div class="topbar">
+    <div>
+      <h1>🐢 TamaPoke</h1>
+      <p class="sub" data-i18n="subtitle"></p>
     </div>
-    <p class="note">Have your own <code>.bin</code> files? <label style="cursor:pointer;text-decoration:underline">pick them manually<input id="files" type="file" accept=".bin" multiple disabled hidden></label></p>
-    <p class="note">🎨 Want to make your own sprites? See <a href="https://github.com/DylanPDao/TamaPoke#generate-and-load-the-sprites-yourself" target="_blank">how to generate &amp; load them</a> in the repo.</p>
-    <div class="bar" id="bar"><div></div></div>
-    <pre id="log"></pre>
+    <button class="lang-btn" id="langToggle">English</button>
   </div>
 
-  <h2>How to play</h2>
-  <p>Care for your egg until it hatches, feed it, play, train it and complete them
-     all. Tap the creature to pet it; swipe to open the Pokédex (sideways), the
-     stat card (up) or set the clock (down); the physical PWR button turns the
-     screen off (short press) or everything off (long press).
-     More in the <a href="https://github.com/DylanPDao/TamaPoke" target="_blank">repository</a>.</p>
-  <p class="note">TamaPoke was created by <b>Quique Tortosa</b> —
-     <a href="https://github.com/socquique/TamaPoke" target="_blank">socquique/TamaPoke</a>.
-     This is a fork that builds on his work.</p>
+  <div class="badges" id="badges">
+    <span class="badge ok" id="fwBadge">ESP32-S3</span>
+    <span class="badge" id="langBadge">繁體中文 + 6 國語言</span>
+    <span class="badge" id="buildBadge" style="display:none"></span>
+  </div>
 
-  <p class="note">Sprites from <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank">PMD SpriteCollab</a> (CC BY-NC).
-     Pokémon is a ™ of Nintendo / Game Freak. Non-commercial project.</p>
+  <div class="unsupported" id="unsupported" data-i18n-html="unsupported"></div>
+
+  <div class="step" style="border-left:4px solid var(--bad);background:var(--warn-bg)">
+    <p style="margin-top:0" data-i18n-html="dlTitle"></p>
+    <p data-i18n-html="dlDesc"></p>
+    <p style="font-size:1.05em;margin:.6rem 0" data-i18n-html="dlCombo"></p>
+    <p class="note" style="margin-bottom:.35rem" data-i18n-html="dlNote1"></p>
+    <p class="note" style="margin:0" data-i18n-html="dlNote2"></p>
+  </div>
+
+  <h2><span class="num">1</span><span data-i18n="s1Title"></span></h2>
+  <div class="step">
+    <p style="margin-top:0" data-i18n-html="s1Desc"></p>
+    <div class="row">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate" class="primary" data-i18n="s1Btn"></button>
+        <span slot="unsupported" data-i18n="s1Unsupported"></span>
+        <span slot="not-allowed" data-i18n="s1Https"></span>
+      </esp-web-install-button>
+    </div>
+    <div class="callout safe" data-i18n-html="s1Safe"></div>
+    <details>
+      <summary data-i18n="manualBins"></summary>
+      <div class="bin-list">
+        <a class="bin-item" href="firmware/app.bin" download><b>app.bin</b><span>0x10000</span></a>
+        <a class="bin-item" href="firmware/bootloader.bin" download><b>bootloader.bin</b><span>0x0</span></a>
+        <a class="bin-item" href="firmware/partitions.bin" download><b>partitions.bin</b><span>0x8000</span></a>
+        <a class="bin-item" href="firmware/boot_app0.bin" download><b>boot_app0.bin</b><span>0xe000</span></a>
+        <a class="bin-item" href="firmware/tamapoke.bin" download><b>tamapoke.bin</b><span>0x0 (merged)</span></a>
+      </div>
+      <p class="note" style="margin:.6rem 0 0" data-i18n-html="manualHint"></p>
+    </details>
+  </div>
+
+  <h2><span class="num">2</span><span data-i18n="s2Title"></span></h2>
+  <div class="step">
+    <p style="margin-top:0" data-i18n-html="s2Desc"></p>
+    <div class="row">
+      <button id="backupBtn" class="safe" data-i18n="s2Backup"></button>
+      <button id="restoreBtn" data-i18n="s2Restore"></button>
+      <input id="restoreFile" type="file" accept=".txt" hidden>
+    </div>
+    <pre class="logbox" id="saveLog"></pre>
+  </div>
+
+  <h2><span class="num">3</span><span data-i18n="s3Title"></span></h2>
+  <div class="step">
+    <p style="margin-top:0" data-i18n-html="s3Desc"></p>
+    <p class="note" data-i18n-html="s3Slow"></p>
+    <p class="note" data-i18n-html="s3Close"></p>
+    <div class="row" style="margin-bottom:.65rem">
+      <button id="connect" class="primary" data-i18n="s3Connect"></button>
+      <button id="disconnect" disabled data-i18n="s3Disconnect"></button>
+    </div>
+    <div class="row">
+      <button id="auto"  data-region="kanto"  disabled data-i18n="rKanto"></button>
+      <button id="autoj" data-region="johto"  disabled data-i18n="rJohto"></button>
+      <button id="autoh" data-region="hoenn"  disabled data-i18n="rHoenn"></button>
+      <button id="autos" data-region="sinnoh" disabled data-i18n="rSinnoh"></button>
+      <button id="autou" data-region="unova"  disabled data-i18n="rUnova"></button>
+      <button id="autok" data-region="kalos"  disabled data-i18n="rKalos"></button>
+      <button id="autoa" data-region="alola"  disabled data-i18n="rAlola"></button>
+    </div>
+    <p class="note" style="margin-top:.85rem">
+      <span data-i18n="s3Own"></span>
+      <label style="cursor:pointer;text-decoration:underline">
+        <span data-i18n="s3Pick"></span>
+        <input id="files" type="file" accept=".bin" multiple disabled hidden>
+      </label>
+    </p>
+    <div class="bar" id="bar"><div></div></div>
+    <pre class="logbox" id="log"></pre>
+  </div>
+
+  <h2 data-i18n="howTitle"></h2>
+  <p data-i18n-html="howDesc"></p>
+  <p class="note" data-i18n-html="credits"></p>
+  <p class="note" data-i18n-html="legal"></p>
 </div>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
 <script>
-const log = (m) => { const el = document.getElementById('log'); el.style.display='block';
-  el.textContent += m + '\n'; el.scrollTop = el.scrollHeight; };
-const supported = 'serial' in navigator;
-if (!supported) { document.getElementById('unsupported').style.display='block';
-  document.getElementById('connect').disabled = true; }
+const I18N = {
+  zh: {
+    toggle: 'English',
+    title: 'TamaPoke · 網頁自動燒錄器',
+    subtitle: 'Waveshare ESP32-S3-Touch-AMOLED-1.75 專用的 809 隻寶可夢電子雞。直接透過瀏覽器一鍵燒錄，免裝 Arduino、免驅動程式。',
+    langBadge: '繁體中文 + 6 國語言',
+    unsupported: '⚠️ 目前瀏覽器不支援 Web Serial。請使用電腦版 <b>Chrome</b> 或 <b>Edge</b> 開啟本頁。',
+    dlTitle: '<b>⚠️ 插上 USB 後找不到序列埠？請先看這裡：</b>',
+    dlDesc: '全新的開發板出廠韌體沒有開啟 USB 序列埠，電腦會完全偵測不到。請先讓板子進入<b>下載模式</b>：',
+    dlCombo: '<b>按住 BOOT&nbsp;→ 按一下 RESET&nbsp;→ 放開 BOOT</b>',
+    dlNote1: '兩顆小按鍵在 USB-C 接孔旁，螢幕不會有任何變化屬正常現象。接著再點下方「一鍵安裝」就會看到連接埠；燒錄 TamaPoke 完成後，日後升級就不再需要按鍵。',
+    dlNote2: '如果還是找不到，請確認使用支援<b>資料傳輸</b>的 USB-C 線（純充電線無法通訊），並直接插在電腦主機 USB 孔上。',
+    s1Title: '一鍵燒錄韌體（保留存檔）',
+    s1Desc: '用 USB-C 連接開發板並按下按鈕，選擇序列埠後等待約 1 分鐘即可完成。燒完後可在手錶「設定」切換成 <b>繁中</b>。',
+    s1Btn: '⚡ 一鍵安裝 / 升級 TamaPoke',
+    s1Unsupported: '瀏覽器不支援（請用 Chrome / Edge）',
+    s1Https: '需要 HTTPS 連線',
+    s1Safe: '🛡️ <b>保留記錄檔提醒：</b>升級舊板時，視窗會詢問是否清除裝置，<b>請不要勾選「Erase device」</b>直接按下一步。本燒錄器會自動避開 <code>0x9000</code> 存檔區，你的寶可夢、圖鑑與徽章都會完整保留！<br>若勾選「Erase device」則會清空整個記錄（無法復原）；全新空白板可直接安裝。',
+    manualBins: '進階：手動下載編譯好的 .bin 檔案',
+    manualHint: '若使用 esptool 升級且想保留記錄檔，只要燒 <code>app.bin</code> 到 <code>0x10000</code>（或分開燒前 4 個檔案）；<b>不要燒 <code>tamapoke.bin</code></b>（會覆蓋存檔）。',
+    s2Title: '一鍵備份 / 還原記錄檔（選用）',
+    s2Desc: '升級前如果想多一層保險，可在此直接從手錶匯出記錄檔存成 <code>.txt</code>，或把先前的備份寫回手錶（備份完成後會自動釋放序列埠，不影響步驟 1 燒錄）。',
+    s2Backup: '💾 備份記錄檔 (.txt)',
+    s2Restore: '📥 還原記錄檔 (.txt)',
+    s3Title: '上傳精靈圖檔到 microSD 卡',
+    s3Desc: '插入 microSD 卡（首次使用會自動格式化），點 <b>連接開發板</b> 後選擇想安裝的地區。7 個地區共 809 隻寶可夢可單獨安裝，之後也能隨時補裝其他地區。',
+    s3Slow: '⏱️ <b>傳輸時間較長屬正常現象：</b>圖檔經由 USB 序列埠寫入 SD 卡，單一地區（20～42 MB）約需 <b>8～15 分鐘</b>，傳輸期間請保持分頁開啟。',
+    s3Close: '請先關閉步驟 1 的燒錄視窗再連接（同一時間只能有一個功能佔用序列埠）。',
+    s3Connect: '🔌 連接開發板',
+    s3Disconnect: '⏏️ 中斷連線',
+    rKanto: '⬇️ 關都 Kanto (~42 MB)',
+    rJohto: '⬇️ 城都 Johto (~29 MB)',
+    rHoenn: '⬇️ 豐緣 Hoenn (~40 MB)',
+    rSinnoh: '⬇️ 神奧 Sinnoh (~35 MB)',
+    rUnova: '⬇️ 合眾 Unova (~42 MB)',
+    rKalos: '⬇️ 卡洛斯 Kalos (~22 MB)',
+    rAlola: '⬇️ 阿羅拉 Alola (~29 MB)',
+    s3Own: '手邊已有自己的 <code>.bin</code> 圖檔？',
+    s3Pick: '手動選擇檔案上傳',
+    howTitle: '操作簡介',
+    howDesc: '孵化寶可夢蛋、餵食、洗澡、訓練並挑戰七大地區道館！點寶可夢可互動，左右滑開啟圖鑑／道館，上滑看能力卡，下滑進入時間與語言設定（選 <code>繁中</code>）；實體 PWR 鍵短按關螢幕、長按關機。詳情請見 <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz" target="_blank">GitHub 專案頁面</a>。',
+    credits: 'TamaPoke 原作由 <b>Quique Tortosa</b> 建立（<a href="https://github.com/socquique/TamaPoke" target="_blank">socquique/TamaPoke</a>），本分支基於社群版加入完整繁體中文在地化與自動編譯燒錄流程。',
+    legal: '精靈圖檔來源：<a href="https://github.com/PMDCollab/SpriteCollab" target="_blank">PMD SpriteCollab</a>（CC BY-NC）。Pokémon 為 Nintendo / Game Freak 商標，本專案僅供非商業個人使用。',
+    msgConnected: '已連接開發板，請點選下方地區按鈕開始上傳精靈圖檔。',
+    msgDisconnected: '已中斷連線。',
+    msgConnFail: '連線失敗：',
+    msgConnectFirst: '請先點「連接開發板」。',
+    msgDownloading: (r) => `正在下載 ${r} 地區圖檔包...`,
+    msgDlFail: (r, m) => `無法下載 ${r} 地區圖檔包：${m}`,
+    msgSending: (n, r) => `共 ${n} 個 ${r} 圖檔，正在經由 USB 寫入 SD 卡...`,
+    msgRegionDone: (r) => `${r} 地區完成！可以繼續點其他地區，或重新啟動開發板。`,
+    msgAllDone: (ok, total) => `完成（${ok}/${total}）。請按一下開發板電源鍵或重新啟動。`,
+    msgBackupStart: '已連接，正在向開發板讀取記錄檔（EXPORT）...',
+    msgBackupOk: (f, n) => `備份完成！已下載 ${f}（共 ${n} 行），序列埠已自動中斷。`,
+    msgBackupFail: '讀取失敗：請確認板子已開機並正在執行 TamaPoke 韌體。',
+    msgRestoreStart: (n) => `已連接，正在寫回 ${n} 行記錄資料（IMPORT）...`,
+    msgRestoreOk: '還原成功！開發板將自動重新啟動。',
+    msgRestoreFail: (r) => `還原失敗（${r || '無回應'}），請確認檔案為 TamaPoke 匯出的備份檔。`,
+    msgBadFile: '檔案內容沒有有效的 IMPORT 記錄資料。',
+    notPublished: ' — 尚未發佈'
+  },
+  en: {
+    toggle: '繁體中文',
+    title: 'TamaPoke · Web Installer',
+    subtitle: 'An 809-Pokémon tamagotchi for Waveshare ESP32-S3-Touch-AMOLED-1.75. Flash straight from your browser — no Arduino, no drivers.',
+    langBadge: 'Traditional Chinese + 6 Languages',
+    unsupported: '⚠️ Your browser does not support Web Serial. Use desktop <b>Chrome</b> or <b>Edge</b>.',
+    dlTitle: '<b>⚠️ Board not showing up? Read this first:</b>',
+    dlDesc: 'A brand-new board ships with firmware that does not enable USB serial. Put it in <b>download mode</b> first:',
+    dlCombo: '<b>Hold BOOT&nbsp;→ tap RESET&nbsp;→ release BOOT</b>',
+    dlNote1: 'The two small buttons next to the USB-C port. Nothing changes on screen — that is normal. Press Install and pick the port; once TamaPoke is flashed, this is never needed again.',
+    dlNote2: 'Still nothing? Make sure your USB-C cable carries <b>data</b> (not charge-only) and plug directly into your computer.',
+    s1Title: 'Flash firmware (keeps your save)',
+    s1Desc: 'Plug in via USB-C and click Install. Pick the serial port and wait ~1 minute. Switch to <b>繁中</b> or any language in Settings.',
+    s1Btn: '⚡ Install / Update TamaPoke',
+    s1Unsupported: 'Browser not supported (use Chrome / Edge)',
+    s1Https: 'HTTPS required',
+    s1Safe: '🛡️ <b>Updating an existing board? Leave "Erase device" unchecked</b> and click Next. This installer writes the four partitions around the <code>0x9000</code> NVS save area so your creature, Pokédex, and badges all survive!<br>Ticking "Erase device" wipes your save permanently.',
+    manualBins: 'Advanced: download individual .bin files',
+    manualHint: 'To update via esptool without losing your save, flash only <code>app.bin</code> to <code>0x10000</code> (or the first 4 files at their listed offsets). <b>Do not flash <code>tamapoke.bin</code></b> over an existing save.',
+    s2Title: 'One-click Save Backup / Restore (Optional)',
+    s2Desc: 'Export your save as a <code>.txt</code> file before updating, or restore a previous backup over Web Serial (the serial port closes automatically when done).',
+    s2Backup: '💾 Backup Save (.txt)',
+    s2Restore: '📥 Restore Save (.txt)',
+    s3Title: 'Load Sprites onto microSD',
+    s3Desc: 'Insert a microSD card (auto-formatted on first boot), click <b>Connect board</b>, then pick any of the 7 regions (809 Pokémon total). You can add more regions later.',
+    s3Slow: '⏱️ <b>This part is slow and that is normal:</b> sprites stream over USB serial (20–42 MB per region takes ~8–15 minutes). Keep this tab open.',
+    s3Close: 'Close the Step 1 install dialog first (only one tool can hold the serial port at a time).',
+    s3Connect: '🔌 Connect board',
+    s3Disconnect: '⏏️ Disconnect',
+    rKanto: '⬇️ Kanto (~42 MB)',
+    rJohto: '⬇️ Johto (~29 MB)',
+    rHoenn: '⬇️ Hoenn (~40 MB)',
+    rSinnoh: '⬇️ Sinnoh (~35 MB)',
+    rUnova: '⬇️ Unova (~42 MB)',
+    rKalos: '⬇️ Kalos (~22 MB)',
+    rAlola: '⬇️ Alola (~29 MB)',
+    s3Own: 'Have your own <code>.bin</code> files?',
+    s3Pick: 'pick them manually',
+    howTitle: 'How to play',
+    howDesc: 'Hatch your egg, care for and train your Pokémon, and battle through 7 regional gym ladders. Tap to interact; swipe to open the Pokédex, stat card, or clock/language settings; PWR button toggles screen (short) or power (long). See the <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz" target="_blank">GitHub repository</a>.',
+    credits: 'TamaPoke was created by <b>Quique Tortosa</b> (<a href="https://github.com/socquique/TamaPoke" target="_blank">socquique/TamaPoke</a>). This branch adds full Traditional Chinese localization and automated CI web flashing.',
+    legal: 'Sprites from <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank">PMD SpriteCollab</a> (CC BY-NC). Pokémon is a ™ of Nintendo / Game Freak. Non-commercial personal project.',
+    msgConnected: 'Connected. Pick a region below to upload sprites.',
+    msgDisconnected: 'Disconnected.',
+    msgConnFail: 'Could not connect: ',
+    msgConnectFirst: 'Connect the board first.',
+    msgDownloading: (r) => `Downloading ${r} sprite bundle...`,
+    msgDlFail: (r, m) => `Could not download ${r} bundle: ${m}`,
+    msgSending: (n, r) => `${n} ${r} sprites. Sending over USB...`,
+    msgRegionDone: (r) => `${r} done! Load another region or restart the board.`,
+    msgAllDone: (ok, total) => `Done (${ok}/${total}). Restart the board (PWR button).`,
+    msgBackupStart: 'Connected. Requesting save export (EXPORT)...',
+    msgBackupOk: (f, n) => `Backup saved as ${f} (${n} lines). Port released.`,
+    msgBackupFail: 'Backup failed: make sure the board is booted into TamaPoke firmware.',
+    msgRestoreStart: (n) => `Connected. Restoring ${n} save lines (IMPORT)...`,
+    msgRestoreOk: 'Restore succeeded! The board will reboot automatically.',
+    msgRestoreFail: (r) => `Restore failed (${r || 'timeout'}). Check that the file is a TamaPoke backup.`,
+    msgBadFile: 'No valid IMPORT lines found in the selected file.',
+    notPublished: ' — not published'
+  }
+};
 
+let uiLang = 'zh';
+function applyLang(l) {
+  uiLang = l;
+  document.documentElement.lang = (l === 'zh') ? 'zh-Hant' : 'en';
+  const d = I18N[l];
+  document.title = d.title;
+  document.getElementById('langToggle').textContent = d.toggle;
+  document.getElementById('langBadge').textContent = d.langBadge;
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    const k = el.dataset.i18n;
+    if (d[k]) el.textContent = d[k];
+  }
+  for (const el of document.querySelectorAll('[data-i18n-html]')) {
+    const k = el.dataset.i18nHtml;
+    if (d[k]) el.innerHTML = d[k];
+  }
+}
+document.getElementById('langToggle').onclick = () => applyLang(uiLang === 'zh' ? 'en' : 'zh');
+applyLang('zh');
+
+// Load firmware version & CI build info badges
+(async () => {
+  try {
+    const m = await (await fetch('manifest.json', { cache: 'no-store' })).json();
+    if (m.version) document.getElementById('fwBadge').textContent = `ESP32-S3 · v${m.version}`;
+  } catch (e) {}
+  try {
+    const b = await (await fetch('build-info.json', { cache: 'no-store' })).json();
+    const el = document.getElementById('buildBadge');
+    el.textContent = `${b.branch || 'zhtz'} @ ${(b.sha || '').slice(0, 7)} · ${b.builtAt || ''}`;
+    el.style.display = 'inline-flex';
+  } catch (e) {}
+})();
+
+const supported = 'serial' in navigator;
+if (!supported) {
+  document.getElementById('unsupported').style.display = 'block';
+  document.getElementById('connect').disabled = true;
+  document.getElementById('backupBtn').disabled = true;
+  document.getElementById('restoreBtn').disabled = true;
+}
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function appendLog(id, msg) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+const log = (m) => appendLog('log', m);
+const saveLog = (m) => appendLog('saveLog', m);
+
+// Helper to open/close a temporary Web Serial session for backup/restore
+async function withTempPort(fn) {
+  let p, r, w;
+  try {
+    p = await navigator.serial.requestPort();
+    await p.open({ baudRate: 115200 });
+    r = p.readable.getReader();
+    w = p.writable.getWriter();
+    let buf = '';
+    async function readLine(timeoutMs = 5000) {
+      const deadline = Date.now() + timeoutMs;
+      while (true) {
+        const nl = buf.indexOf('\n');
+        if (nl >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          return line;
+        }
+        const rem = deadline - Date.now();
+        if (rem <= 0) return null;
+        const res = await Promise.race([
+          r.read(),
+          new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), rem))
+        ]);
+        if (res.timeout || res.done) return null;
+        buf += dec.decode(res.value);
+      }
+    }
+    await fn({ write: (s) => w.write(enc.encode(s)), readLine });
+  } finally {
+    try { if (r) { await r.cancel(); r.releaseLock(); } } catch (e) {}
+    try { if (w) { w.releaseLock(); } } catch (e) {}
+    try { if (p) { await p.close(); } } catch (e) {}
+  }
+}
+
+document.getElementById('backupBtn').onclick = async () => {
+  const d = I18N[uiLang];
+  try {
+    await withTempPort(async ({ write, readLine }) => {
+      saveLog(d.msgBackupStart);
+      await write('\nEXPORT\n');
+      const lines = [];
+      let gotEnd = false;
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        const l = await readLine(2500);
+        if (l === null) break;
+        if (l === 'EXPORT FAIL') break;
+        if (l.startsWith('# TamaPoke save') || l.startsWith('IMPORT')) {
+          lines.push(l);
+          if (l === 'IMPORT') { gotEnd = true; break; }
+        }
+      }
+      if (!gotEnd || lines.length < 2) {
+        saveLog(d.msgBackupFail);
+        return;
+      }
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const fname = `tamapoke-save-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
+      const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      saveLog(d.msgBackupOk(fname, lines.length));
+    });
+  } catch (e) {
+    saveLog(d.msgConnFail + e.message);
+  }
+};
+
+document.getElementById('restoreBtn').onclick = () => {
+  document.getElementById('restoreFile').value = '';
+  document.getElementById('restoreFile').click();
+};
+
+document.getElementById('restoreFile').onchange = async (ev) => {
+  const d = I18N[uiLang];
+  const file = ev.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.startsWith('IMPORT'));
+  if (lines.length < 2 || lines[lines.length - 1] !== 'IMPORT') {
+    saveLog(d.msgBadFile);
+    return;
+  }
+  try {
+    await withTempPort(async ({ write, readLine }) => {
+      saveLog(d.msgRestoreStart(lines.length));
+      for (const l of lines) {
+        await write(l + '\n');
+        await new Promise((res) => setTimeout(res, 25));
+      }
+      let resp = null;
+      const deadline = Date.now() + 6000;
+      while (Date.now() < deadline) {
+        const l = await readLine(2000);
+        if (l === null) break;
+        if (l.startsWith('IMPORT ')) { resp = l; break; }
+      }
+      if (resp === 'IMPORT OK') saveLog(d.msgRestoreOk);
+      else saveLog(d.msgRestoreFail(resp));
+    });
+  } catch (e) {
+    saveLog(d.msgConnFail + e.message);
+  }
+};
+
+// Step 3: Sprite uploader over Web Serial (PUT protocol)
 let port, reader, writer, lineBuf = '';
 
 async function readLine(timeoutMs = 6000) {
@@ -143,7 +501,7 @@ async function readLine(timeoutMs = 6000) {
     if (Date.now() > deadline) return null;
     const { value, done } = await reader.read();
     if (done) return null;
-    lineBuf += new TextDecoder().decode(value);
+    lineBuf += dec.decode(value);
   }
 }
 
@@ -158,9 +516,6 @@ async function waitFor(token, timeoutMs = 6000) {
   return false;
 }
 
-const enc = new TextEncoder();
-
-// sends one file to the board with the PUT protocol (name includes the mons/ prefix)
 async function sendOne(name, data) {
   await writer.write(enc.encode(`PUT ${name} ${data.length}\n`));
   if (!await waitFor('OK')) return false;
@@ -171,7 +526,6 @@ async function sendOne(name, data) {
   return await waitFor('DONE', 30000);
 }
 
-// splits the sprites.pak bundle (TPAK) into its individual files
 function parsePak(buf) {
   const dv = new DataView(buf), td = new TextDecoder();
   if (td.decode(new Uint8Array(buf, 0, 4)) !== 'TPAK') throw new Error('invalid bundle');
@@ -197,7 +551,14 @@ async function sendAll(items) {
     done++;
     fill.style.width = (done / items.length * 100) + '%';
   }
-  log(`Done (${done - fail}/${items.length}). Restart the board (PWR button).`);
+  log(I18N[uiLang].msgAllDone(done - fail, items.length));
+}
+
+function setConnectedUi(connected) {
+  document.getElementById('connect').disabled = connected || !supported;
+  document.getElementById('disconnect').disabled = !connected;
+  document.getElementById('files').disabled = !connected;
+  for (const b of document.querySelectorAll('[data-region]')) b.disabled = !connected;
 }
 
 document.getElementById('connect').onclick = async () => {
@@ -207,27 +568,22 @@ document.getElementById('connect').onclick = async () => {
     reader = port.readable.getReader();
     writer = port.writable.getWriter();
     lineBuf = '';
-    log('Connected. Press "Load sprites".');
-    for (const b of document.querySelectorAll('[data-region]')) b.disabled = false;
-    document.getElementById('files').disabled = false;
-    probeRegions();      // grey out any region that has no bundle to download
-    document.getElementById('connect').disabled = true;
-  } catch (e) { log('Could not connect: ' + e.message); }
+    log(I18N[uiLang].msgConnected);
+    setConnectedUi(true);
+    probeRegions();
+  } catch (e) { log(I18N[uiLang].msgConnFail + e.message); }
 };
 
-// One bundle per region. Kanto alone is ~40 MB and all three would be ~100 MB,
-// which is GitHub's hard per-file limit -- so they are separate files, and a
-// player can take Kanto and stop, or add a region later without re-sending what
-// is already on the card.
-// Where the bundles live. They are NOT committed: each is ~40 MB, and putting
-// them in the repo would make every clone of a firmware project carry 100+ MB of
-// sprites forever. A GitHub Release hosts them outside the git history, and its
-// downloads send Access-Control-Allow-Origin, so fetch() from Pages works.
-//
-// Same origin is tried first anyway, so `python3 -m http.server` in web/ with the
-// paks sitting there works for local testing without touching this.
-const PAK_RELEASE = 'https://github.com/DylanPDao/TamaPoke/releases/latest/download';
+document.getElementById('disconnect').onclick = async () => {
+  try { if (reader) { await reader.cancel(); reader.releaseLock(); } } catch (e) {}
+  try { if (writer) { writer.releaseLock(); } } catch (e) {}
+  try { if (port) { await port.close(); } } catch (e) {}
+  port = reader = writer = null;
+  setConnectedUi(false);
+  log(I18N[uiLang].msgDisconnected);
+};
 
+const PAK_RELEASE = 'https://github.com/DylanPDao/TamaPoke/releases/latest/download';
 function pakUrls(region) {
   return [`sprites-${region}.pak`, `${PAK_RELEASE}/sprites-${region}.pak`];
 }
@@ -244,13 +600,6 @@ async function fetchPak(region) {
   throw last || new Error('not found');
 }
 
-// HEAD, not a ranged GET: a ranged GET against a server that ignores Range --
-// python's http.server does -- starts streaming all 40 MB just to find out the
-// file exists. HEAD sends headers only, and both a local server and GitHub
-// releases support it.
-// A region whose sprites have not been packed yet should not present a button
-// that can only fail -- "Failed to fetch" means nothing to somebody installing
-// this for the first time.
 async function probeRegions() {
   for (const b of document.querySelectorAll('[data-region]')) {
     const region = b.dataset.region;
@@ -259,43 +608,40 @@ async function probeRegions() {
       try {
         const r = await fetch(url, { method: 'HEAD' });
         if (r.ok) { found = true; break; }
-      } catch (e) { /* try the next */ }
+      } catch (e) {}
     }
     if (!found) {
       b.disabled = true;
-      b.textContent = b.textContent.replace(/^⬇️ /, '') .replace(/ \(.*\)$/, '') + ' — not published yet';
-      b.title = 'No sprite bundle exists for this region yet. See web/README.md.';
+      b.textContent = b.textContent.replace(/^⬇️ /, '').replace(/ \(.*\)$/, '') + I18N[uiLang].notPublished;
     }
   }
 }
 
 async function loadRegion(btn) {
+  const d = I18N[uiLang];
   const region = btn.dataset.region;
-  if (!writer) { log('Connect the board first.'); return; }
+  if (!writer) { log(d.msgConnectFirst); return; }
   btn.disabled = true;
-  log(`Downloading the ${region} sprite bundle (this is the slow part)...`);
+  log(d.msgDownloading(region));
   let items;
   try {
     items = parsePak(await fetchPak(region));
   } catch (e) {
-    log(`Could not download the ${region} bundle: ` + e.message);
-    log(`If this repo has no release yet, that is why -- see web/README.md.`);
+    log(d.msgDlFail(region, e.message));
     btn.disabled = false;
     return;
   }
-  log(`${items.length} ${region} sprites. Sending over USB...`);
+  log(d.msgSending(items.length, region));
   await sendAll(items);
-  log(`${region} done. You can load another region, or stop here.`);
+  log(d.msgRegionDone(region));
 }
-// Driven off the markup, so adding a region is ONE new button and nothing
-// else. This was three separate hardcoded id lists.
 for (const b of document.querySelectorAll('[data-region]')) b.onclick = () => loadRegion(b);
 
 document.getElementById('files').onchange = async (ev) => {
   const files = [...ev.target.files];
   const items = [];
   for (const f of files) items.push({ name: 'mons/' + f.name, data: new Uint8Array(await f.arrayBuffer()) });
-  log(`${items.length} files. Sending...`);
+  log(`${items.length} files...`);
   await sendAll(items);
 };
 </script>

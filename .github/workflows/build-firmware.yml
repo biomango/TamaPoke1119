@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Firmware (.bin)
+name: Build ESP32-S3 Firmware (.bin) & Deploy Web Installer
 
 on:
   push:
@@ -7,13 +7,19 @@ on:
   workflow_dispatch:
     inputs:
       update_web_firmware:
-        description: "Commit compiled .bin files into web/firmware/ on this branch"
+        description: "Also commit compiled .bin files into web/firmware/ on this branch"
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -56,7 +62,7 @@ jobs:
             --export-binaries \
             TamaPoke
 
-      - name: Package .bin files
+      - name: Package .bin files and verify save safety
         run: |
           set -euo pipefail
           B="TamaPoke/build/esp32.esp32.esp32s3"
@@ -91,6 +97,30 @@ jobs:
             cp "$B/TamaPoke.ino.merged.bin" out/tamapoke.bin
           fi
 
+          # Overlay freshly built binaries into TamaPoke/web/firmware/ and verify
+          # the web installer manifest cannot overwrite NVS (0x9000..0xE000).
+          cp out/bootloader.bin TamaPoke/web/firmware/bootloader.bin
+          cp out/partitions.bin TamaPoke/web/firmware/partitions.bin
+          cp out/boot_app0.bin  TamaPoke/web/firmware/boot_app0.bin
+          cp out/app.bin        TamaPoke/web/firmware/app.bin
+          if [ -f out/tamapoke.bin ]; then
+            cp out/tamapoke.bin TamaPoke/web/firmware/tamapoke.bin
+          fi
+          python3 TamaPoke/tools/check_installer.py
+
+          # Emit build-info.json for the web installer badge
+          FW_VER="$(grep -o '"[0-9.]*"' TamaPoke/TamaPoke.ino | head -1 | tr -d '"')"
+          BUILT_AT="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          python3 - "$FW_VER" "${GITHUB_REF_NAME}" "${GITHUB_SHA}" "$BUILT_AT" << 'PY'
+          import json, sys
+          json.dump({
+              "version": sys.argv[1],
+              "branch": sys.argv[2],
+              "sha": sys.argv[3],
+              "builtAt": sys.argv[4],
+          }, open("TamaPoke/web/build-info.json", "w"), indent=2)
+          PY
+
           ls -lh out/
           {
             echo "## TamaPoke ESP32-S3 Firmware Build"
@@ -113,18 +143,20 @@ jobs:
           path: out/*.bin
           if-no-files-found: error
 
-      - name: Update web/firmware/ (manual dispatch only)
+      - name: Setup GitHub Pages
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/configure-pages@v5
+
+      - name: Upload web installer site for GitHub Pages
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: TamaPoke/web
+
+      - name: Update web/firmware/ in git (manual dispatch only)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_web_firmware }}
         working-directory: TamaPoke
         run: |
-          cp ../out/bootloader.bin web/firmware/bootloader.bin
-          cp ../out/partitions.bin web/firmware/partitions.bin
-          cp ../out/boot_app0.bin  web/firmware/boot_app0.bin
-          cp ../out/app.bin        web/firmware/app.bin
-          if [ -f ../out/tamapoke.bin ]; then
-            cp ../out/tamapoke.bin web/firmware/tamapoke.bin
-          fi
-          python3 tools/check_installer.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add web/firmware/*.bin
@@ -132,3 +164,15 @@ jobs:
             git commit -m "Update compiled web/firmware binaries from CI"
             git push
           fi
+
+  deploy-pages:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy web installer to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
