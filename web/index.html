@@ -102,25 +102,48 @@
   }
   .bin-item:hover { background: var(--bg); }
   .bin-item span { color: var(--muted); font-family: ui-monospace, monospace; font-size: .8rem; }
+  .top-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .switch-link {
+    font-size: .86rem; font-weight: 600; padding: .4rem .85rem; border-radius: 999px;
+    border: 1px solid var(--track); background: #fff; color: var(--accent);
+    text-decoration: none; display: inline-flex; align-items: center; gap: .3rem;
+  }
+  .switch-link:hover { background: #ebe6d3; }
+  .badge.hw { background: #eef5fc; border-color: #b7d5ee; color: #245780; }
+  .df-box {
+    display: none; margin: .7rem 0 .85rem; padding: .7rem .9rem;
+    background: #f8f6ec; border: 1px solid var(--track); border-radius: 10px;
+    font-size: .88rem;
+  }
+  .df-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .df-bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin-top: .45rem; }
+  .df-bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .progress-meta { font-size: .85rem; color: var(--muted); margin-top: .45rem; display: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div>
-      <h1>🐢 TamaPoke</h1>
+      <h1>🐢 TamaPoke <span style="font-size:.55em;vertical-align:middle;color:var(--accent)">1.75C</span></h1>
       <p class="sub" data-i18n="subtitle"></p>
     </div>
-    <button class="lang-btn" id="langToggle">English</button>
+    <div class="top-actions">
+      <a class="switch-link" href="../" data-i18n="switch175"></a>
+      <button class="lang-btn" id="langToggle">English</button>
+    </div>
   </div>
 
   <div class="badges" id="badges">
+    <span class="badge hw" id="hwBadge">Waveshare 1.75C · 32MB Flash</span>
     <span class="badge ok" id="fwBadge">ESP32-S3</span>
     <span class="badge" id="langBadge">繁體中文 + 6 國語言</span>
     <span class="badge" id="buildBadge" style="display:none"></span>
   </div>
 
   <div class="unsupported" id="unsupported" data-i18n-html="unsupported"></div>
+
+  <div class="callout" style="margin-top:0;margin-bottom:.85rem;border-left-color:var(--accent);background:#eef5fc" data-i18n-html="hwNotice"></div>
 
   <div class="step" style="border-left:4px solid var(--bad);background:var(--warn-bg)">
     <p style="margin-top:0" data-i18n-html="dlTitle"></p>
@@ -173,6 +196,17 @@
     <div class="row" style="margin-bottom:.65rem">
       <button id="connect" class="primary" data-i18n="s3Connect"></button>
       <button id="disconnect" disabled data-i18n="s3Disconnect"></button>
+      <button id="checkDf" disabled data-i18n="s3CheckDf"></button>
+    </div>
+    <div class="df-box" id="dfBox">
+      <div class="df-head">
+        <b data-i18n="dfTitle"></b>
+        <span id="dfText"></span>
+      </div>
+      <div class="df-bar"><div id="dfFill"></div></div>
+    </div>
+    <div class="row" style="margin-bottom:.65rem">
+      <button id="autoAll" class="safe" disabled data-i18n="rAll"></button>
     </div>
     <div class="row">
       <button id="auto"  data-region="kanto"  disabled data-i18n="rKanto"></button>
@@ -191,6 +225,7 @@
       </label>
     </p>
     <div class="bar" id="bar"><div></div></div>
+    <div class="progress-meta" id="progressMeta"></div>
     <pre class="logbox" id="log"></pre>
   </div>
 
@@ -205,16 +240,18 @@
 const I18N = {
   zh: {
     toggle: 'English',
+    switch175: '⇄ 切換 1.75（SD 卡版）',
     title: 'TamaPoke (1.75C) · 網頁自動燒錄器',
-    subtitle: 'Waveshare ESP32-S3-Touch-AMOLED-1.75C（32 MB Flash 無記憶卡壓縮版）專用的 809 隻寶可夢電子雞。直接透過瀏覽器一鍵燒錄，免裝 Arduino、免記憶卡。',
-    langBadge: '1.75C 32MB 壓縮版 · 繁體中文 + 6 國語言',
+    subtitle: 'Waveshare ESP32-S3-Touch-AMOLED-1.75C（32 MB Flash 無記憶卡壓縮版）專用的 809 隻寶可夢電子雞。直接透過瀏覽器一鍵燒錄韌體與壓縮圖檔，免裝 Arduino、免記憶卡。',
+    langBadge: '繁體中文 + 6 國語言',
+    hwNotice: '📌 <b>機型確認：</b>本頁為 <b>Waveshare ESP32-S3-Touch-AMOLED-1.75C（32 MB Flash、無記憶卡槽）</b>專用燒錄器（已修正 <code>LCD_RESET=1</code>、<code>TP_RESET=2</code>、<code>ALDO1</code> 音訊電源與 <code>LittleFS</code> 壓縮圖檔）。如果你使用的是有 microSD 卡槽的原版 1.75，請改用 <a href="../">1.75 microSD 版燒錄器</a>。',
     unsupported: '⚠️ 目前瀏覽器不支援 Web Serial。請使用電腦版 <b>Chrome</b> 或 <b>Edge</b> 開啟本頁。',
     dlTitle: '<b>⚠️ 插上 USB 後找不到序列埠？請先看這裡：</b>',
     dlDesc: '全新的開發板出廠韌體沒有開啟 USB 序列埠，電腦會完全偵測不到。請先讓板子進入<b>下載模式</b>：',
     dlCombo: '<b>按住 BOOT&nbsp;→ 按一下 RESET&nbsp;→ 放開 BOOT</b>',
     dlNote1: '兩顆小按鍵在 USB-C 接孔旁，螢幕不會有任何變化屬正常現象。接著再點下方「一鍵安裝」就會看到連接埠；燒錄 TamaPoke 完成後，日後升級就不再需要按鍵。',
     dlNote2: '如果還是找不到，請確認使用支援<b>資料傳輸</b>的 USB-C 線（純充電線無法通訊），並直接插在電腦主機 USB 孔上。',
-    s1Title: '一鍵燒錄韌體（保留存檔與圖檔）',
+    s1Title: '一鍵燒錄 1.75C 韌體（保留存檔與圖檔）',
     s1Desc: '用 USB-C 連接 <b>1.75C</b> 開發板並按下按鈕，選擇序列埠後等待約 1 分鐘即可完成。燒完後可在手錶「設定」切換成 <b>繁中</b>。',
     s1Btn: '⚡ 一鍵安裝 / 升級 TamaPoke (1.75C)',
     s1Unsupported: '瀏覽器不支援（請用 Chrome / Edge）',
@@ -226,12 +263,15 @@ const I18N = {
     s2Desc: '升級前如果想多一層保險，可在此直接從手錶匯出記錄檔存成 <code>.txt</code>，或把先前的備份寫回手錶（備份完成後會自動釋放序列埠，不影響步驟 1 燒錄）。',
     s2Backup: '💾 備份記錄檔 (.txt)',
     s2Restore: '📥 還原記錄檔 (.txt)',
-    s3Title: '上傳壓縮精靈圖檔到內建 32 MB Flash',
-    s3Desc: '無需 microSD 卡！首次開機會自動初始化內建 22 MB LittleFS 空間。點 <b>連接開發板</b> 後選擇想安裝的地區，7 個地區共 809 隻寶可夢壓縮後合計僅約 <b>6.3 MB</b>，可全部一次裝入內建 Flash！',
-    s3Slow: '⚡ <b>TPKZ 壓縮加速：</b>每個地區壓縮後僅 0.7～1.3 MB，經由 USB 序列埠上傳單一地區約需 <b>15～30 秒</b>，傳輸期間請保持分頁開啟。',
+    s3Title: '一鍵寫入壓縮精靈圖檔到內建 32 MB Flash',
+    s3Desc: '無需 microSD 卡！首次開機會自動初始化內建 <b>22.88 MB LittleFS</b> 空間。點 <b>連接開發板</b> 後可一鍵安裝全部 7 個地區（809 隻寶可夢壓縮後合計僅約 <b>6.3 MB</b>），也可分區單獨安裝。',
+    s3Slow: '⚡ <b>TPKZ 壓縮加速：</b>每個地區壓縮後僅 0.7～1.3 MB，單一地區約需 <b>15～30 秒</b>，全部 7 區一次寫入約 <b>2～3 分鐘</b>；傳輸期間請保持分頁開啟。',
     s3Close: '請先關閉步驟 1 的燒錄視窗再連接（同一時間只能有一個功能佔用序列埠）。',
     s3Connect: '🔌 連接開發板',
     s3Disconnect: '⏏️ 中斷連線',
+    s3CheckDf: '📊 查詢 Flash 空間',
+    dfTitle: '💾 內建 LittleFS 空間',
+    rAll: '⚡ 一鍵安裝全部 7 個地區（809 隻 · ~6.3 MB）',
     rKanto: '⬇️ 關都 Kanto (~1.3 MB)',
     rJohto: '⬇️ 城都 Johto (~0.9 MB)',
     rHoenn: '⬇️ 豐緣 Hoenn (~1.2 MB)',
@@ -242,18 +282,24 @@ const I18N = {
     s3Own: '手邊已有自己的 <code>.bin</code> 圖檔？',
     s3Pick: '手動選擇檔案上傳',
     howTitle: '操作簡介',
-    howDesc: '孵化寶可夢蛋、餵食、洗澡、訓練並挑戰七大地區道館！點寶可夢可互動，左右滑開啟圖鑑／道館，上滑看能力卡，下滑進入時間與語言設定（選 <code>繁中</code>）；實體 PWR 鍵短按關螢幕、長按關機。詳情請見 <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz-1.75c" target="_blank">GitHub 專案頁面</a>。',
+    howDesc: '孵化寶可夢蛋、餵食、洗澡、訓練並挑戰七大地區道館！點寶可夢可互動，左右滑開啟圖鑑／道館，上滑看能力卡，下滑進入時間與語言設定（選 <code>繁中</code>）；實體 PWR 鍵短按關螢幕、長按關機。詳情請見 <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz-1.75c" target="_blank">GitHub 專案頁面（zhtz-1.75c）</a>。',
     credits: 'TamaPoke 原作由 <b>Quique Tortosa</b> 建立（<a href="https://github.com/socquique/TamaPoke" target="_blank">socquique/TamaPoke</a>），本分支基於 <code>zhtz</code> 繁體中文版移植至 Waveshare 1.75C（內建 32 MB Flash + TPKZ 壓縮圖檔）。',
     legal: '精靈圖檔來源：<a href="https://github.com/PMDCollab/SpriteCollab" target="_blank">PMD SpriteCollab</a>（CC BY-NC）。Pokémon 為 Nintendo / Game Freak 商標，本專案僅供非商業個人使用。',
-    msgConnected: '已連接開發板，請點選下方地區按鈕開始上傳壓縮精靈圖檔。',
+    msgConnected: '已連接 1.75C 開發板！可點選「一鍵安裝全部 7 個地區」或個別地區開始寫入。',
     msgDisconnected: '已中斷連線。',
     msgConnFail: '連線失敗：',
     msgConnectFirst: '請先點「連接開發板」。',
     msgDownloading: (r) => `正在下載 ${r} 地區壓縮圖檔包...`,
+    msgDlAll: (i, n, r) => `正在下載第 ${i}/${n} 個地區包（${r}）...`,
     msgDlFail: (r, m) => `無法下載 ${r} 地區圖檔包：${m}`,
     msgSending: (n, r) => `共 ${n} 個 ${r} 圖檔，正在經由 USB 寫入內建 Flash...`,
-    msgRegionDone: (r) => `${r} 地區完成！可以繼續點其他地區，或重新啟動開發板。`,
-    msgAllDone: (ok, total) => `完成（${ok}/${total}）。請按一下開發板電源鍵或重新啟動。`,
+    msgSendingAll: (n, kb) => `已下載全部 7 區（去除重複後共 ${n} 個壓縮檔，合計 ${(kb/1024).toFixed(2)} MB），開始寫入內建 Flash...`,
+    msgRegionDone: (r) => `${r} 地區寫入完成！可以繼續點其他地區，或重新啟動開發板。`,
+    msgAllRegionsDone: '全部 7 個地區寫入完成！請重新啟動開發板（或按一下 RESET）即可載入所有精靈圖檔與縮圖。',
+    msgAllDone: (ok, total) => `寫入完成（成功 ${ok}/${total}）。`,
+    msgProgress: (done, total, name, sec) => `${done}/${total} (${Math.round(done / total * 100)}%) · ${name} · ${sec}s`,
+    msgDf: (usedMB, totalMB, freeMB) => `已用 ${usedMB} MB / ${totalMB} MB（剩餘 ${freeMB} MB）`,
+    msgDfFail: '無法讀取空間（請確認已燒錄 1.75C 韌體）',
     msgBackupStart: '已連接，正在向開發板讀取記錄檔（EXPORT）...',
     msgBackupOk: (f, n) => `備份完成！已下載 ${f}（共 ${n} 行），序列埠已自動中斷。`,
     msgBackupFail: '讀取失敗：請確認板子已開機並正在執行 TamaPoke 韌體。',
@@ -265,16 +311,18 @@ const I18N = {
   },
   en: {
     toggle: '繁體中文',
+    switch175: '⇄ Switch to 1.75 (microSD)',
     title: 'TamaPoke (1.75C) · Web Installer',
-    subtitle: 'An 809-Pokémon tamagotchi for Waveshare ESP32-S3-Touch-AMOLED-1.75C (32 MB Flash, SD-less compressed sprites). Flash straight from your browser — no Arduino, no SD card.',
-    langBadge: '1.75C 32MB Compressed · Traditional Chinese + 6 Languages',
+    subtitle: 'An 809-Pokémon tamagotchi for Waveshare ESP32-S3-Touch-AMOLED-1.75C (32 MB Flash, SD-less compressed sprites). Flash firmware and compressed sprites straight from your browser — no Arduino, no SD card.',
+    langBadge: 'Traditional Chinese + 6 Languages',
+    hwNotice: '📌 <b>Hardware check:</b> This page is exclusively for <b>Waveshare ESP32-S3-Touch-AMOLED-1.75C (32 MB Flash, no SD slot)</b> with <code>LCD_RESET=1</code>, <code>TP_RESET=2</code>, <code>ALDO1</code> audio power, and <code>LittleFS</code> compressed sprites. If you have the original 1.75 with a microSD slot, use the <a href="../">1.75 microSD installer</a> instead.',
     unsupported: '⚠️ Your browser does not support Web Serial. Use desktop <b>Chrome</b> or <b>Edge</b>.',
     dlTitle: '<b>⚠️ Board not showing up? Read this first:</b>',
     dlDesc: 'A brand-new board ships with firmware that does not enable USB serial. Put it in <b>download mode</b> first:',
     dlCombo: '<b>Hold BOOT&nbsp;→ tap RESET&nbsp;→ release BOOT</b>',
     dlNote1: 'The two small buttons next to the USB-C port. Nothing changes on screen — that is normal. Press Install and pick the port; once TamaPoke is flashed, this is never needed again.',
     dlNote2: 'Still nothing? Make sure your USB-C cable carries <b>data</b> (not charge-only) and plug directly into your computer.',
-    s1Title: 'Flash firmware (keeps saves & sprites)',
+    s1Title: 'Flash 1.75C Firmware (keeps saves & sprites)',
     s1Desc: 'Plug in your <b>1.75C</b> via USB-C and click Install. Pick the serial port and wait ~1 minute. Switch to <b>繁中</b> or any language in Settings.',
     s1Btn: '⚡ Install / Update TamaPoke (1.75C)',
     s1Unsupported: 'Browser not supported (use Chrome / Edge)',
@@ -287,11 +335,14 @@ const I18N = {
     s2Backup: '💾 Backup Save (.txt)',
     s2Restore: '📥 Restore Save (.txt)',
     s3Title: 'Load Compressed Sprites into 32 MB Flash',
-    s3Desc: 'No microSD card needed! First boot auto-formats the 22 MB internal LittleFS partition. Click <b>Connect board</b>, then pick any or all 7 regions — all 809 Pokémon compressed total only <b>~6.3 MB</b> and fit together in internal Flash.',
-    s3Slow: '⚡ <b>Fast TPKZ transfer:</b> each compressed region is only 0.7–1.3 MB and uploads over USB serial in ~15–30 seconds. Keep this tab open.',
+    s3Desc: 'No microSD card needed! First boot auto-formats the <b>22.88 MB internal LittleFS</b> partition. Click <b>Connect board</b>, then install all 7 regions in one click (all 809 Pokémon compressed total only <b>~6.3 MB</b>) or pick individual regions.',
+    s3Slow: '⚡ <b>Fast TPKZ transfer:</b> each compressed region is only 0.7–1.3 MB (~15–30s each, ~2–3 min for all 7 regions). Keep this tab open.',
     s3Close: 'Close the Step 1 install dialog first (only one tool can hold the serial port at a time).',
     s3Connect: '🔌 Connect board',
     s3Disconnect: '⏏️ Disconnect',
+    s3CheckDf: '📊 Check Flash Space',
+    dfTitle: '💾 Internal LittleFS Space',
+    rAll: '⚡ Install All 7 Regions (809 Pokémon · ~6.3 MB)',
     rKanto: '⬇️ Kanto (~1.3 MB)',
     rJohto: '⬇️ Johto (~0.9 MB)',
     rHoenn: '⬇️ Hoenn (~1.2 MB)',
@@ -302,18 +353,24 @@ const I18N = {
     s3Own: 'Have your own <code>.bin</code> files?',
     s3Pick: 'pick them manually',
     howTitle: 'How to play',
-    howDesc: 'Hatch your egg, care for and train your Pokémon, and battle through 7 regional gym ladders. Tap to interact; swipe to open the Pokédex, stat card, or clock/language settings; PWR button toggles screen (short) or power (long). See the <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz-1.75c" target="_blank">GitHub repository</a>.',
+    howDesc: 'Hatch your egg, care for and train your Pokémon, and battle through 7 regional gym ladders. Tap to interact; swipe to open the Pokédex, stat card, or clock/language settings; PWR button toggles screen (short) or power (long). See the <a href="https://github.com/biomango/TamaPoke1119/tree/zhtz-1.75c" target="_blank">GitHub repository (zhtz-1.75c)</a>.',
     credits: 'TamaPoke was created by <b>Quique Tortosa</b> (<a href="https://github.com/socquique/TamaPoke" target="_blank">socquique/TamaPoke</a>). This branch ports the <code>zhtz</code> Traditional Chinese edition to Waveshare 1.75C (32 MB Flash LittleFS + TPKZ compressed sprites).',
     legal: 'Sprites from <a href="https://github.com/PMDCollab/SpriteCollab" target="_blank">PMD SpriteCollab</a> (CC BY-NC). Pokémon is a ™ of Nintendo / Game Freak. Non-commercial personal project.',
-    msgConnected: 'Connected. Pick a region below to upload compressed sprites.',
+    msgConnected: 'Connected to 1.75C board! Click "Install All 7 Regions" or pick individual regions below.',
     msgDisconnected: 'Disconnected.',
     msgConnFail: 'Could not connect: ',
     msgConnectFirst: 'Connect the board first.',
     msgDownloading: (r) => `Downloading compressed ${r} sprite bundle...`,
+    msgDlAll: (i, n, r) => `Downloading bundle ${i}/${n} (${r})...`,
     msgDlFail: (r, m) => `Could not download ${r} bundle: ${m}`,
     msgSending: (n, r) => `${n} ${r} sprites. Writing to internal Flash over USB...`,
+    msgSendingAll: (n, kb) => `Downloaded all 7 regions (${n} unique compressed files, ${(kb/1024).toFixed(2)} MB total). Writing to internal Flash...`,
     msgRegionDone: (r) => `${r} done! Load another region or restart the board.`,
-    msgAllDone: (ok, total) => `Done (${ok}/${total}). Restart the board (PWR button).`,
+    msgAllRegionsDone: 'All 7 regions installed! Restart the board (or tap RESET) to load all sprites and thumbnails.',
+    msgAllDone: (ok, total) => `Transfer finished (${ok}/${total} succeeded).`,
+    msgProgress: (done, total, name, sec) => `${done}/${total} (${Math.round(done / total * 100)}%) · ${name} · ${sec}s`,
+    msgDf: (usedMB, totalMB, freeMB) => `Used ${usedMB} MB / ${totalMB} MB (${freeMB} MB free)`,
+    msgDfFail: 'Could not query space (make sure 1.75C firmware is flashed)',
     msgBackupStart: 'Connected. Requesting save export (EXPORT)...',
     msgBackupOk: (f, n) => `Backup saved as ${f} (${n} lines). Port released.`,
     msgBackupFail: 'Backup failed: make sure the board is booted into TamaPoke firmware.',
@@ -490,18 +547,39 @@ document.getElementById('restoreFile').onchange = async (ev) => {
   }
 };
 
-// Step 3: Sprite uploader over Web Serial (PUT protocol)
-let port, reader, writer, lineBuf = '';
+// Step 3: Sprite uploader over Web Serial (PUT / DF protocol for 1.75C LittleFS)
+let port, reader, writer, lineBuf = '', readerNotify = null, busy = false, lastDf = null;
+const ALL_REGIONS = ['kanto', 'johto', 'hoenn', 'sinnoh', 'unova', 'kalos', 'alola'];
+
+function startReadPump() {
+  (async () => {
+    try {
+      while (reader) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        lineBuf += dec.decode(value, { stream: true });
+        if (readerNotify) { const fn = readerNotify; readerNotify = null; fn(); }
+      }
+    } catch (e) {}
+    if (readerNotify) { const fn = readerNotify; readerNotify = null; fn(); }
+  })();
+}
 
 async function readLine(timeoutMs = 6000) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
     const nl = lineBuf.indexOf('\n');
-    if (nl >= 0) { const l = lineBuf.slice(0, nl).trim(); lineBuf = lineBuf.slice(nl + 1); return l; }
-    if (Date.now() > deadline) return null;
-    const { value, done } = await reader.read();
-    if (done) return null;
-    lineBuf += dec.decode(value);
+    if (nl >= 0) {
+      const l = lineBuf.slice(0, nl).trim();
+      lineBuf = lineBuf.slice(nl + 1);
+      return l;
+    }
+    const rem = deadline - Date.now();
+    if (rem <= 0 || !reader) return null;
+    await new Promise((resolve) => {
+      const t = setTimeout(() => { readerNotify = null; resolve(); }, rem);
+      readerNotify = () => { clearTimeout(t); resolve(); };
+    });
   }
 }
 
@@ -514,6 +592,40 @@ async function waitFor(token, timeoutMs = 6000) {
     if (l === 'ERR') return false;
   }
   return false;
+}
+
+function renderDf() {
+  if (!lastDf) return;
+  const { total, used, free } = lastDf;
+  const mb = (b) => (b / 1048576).toFixed(2);
+  document.getElementById('dfBox').style.display = 'block';
+  document.getElementById('dfText').textContent = I18N[uiLang].msgDf(mb(used), mb(total), mb(free));
+  const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
+  document.getElementById('dfFill').style.width = pct.toFixed(1) + '%';
+}
+
+async function queryDiskFree(silent = false) {
+  if (!writer || busy) return;
+  try {
+    lineBuf = '';
+    await writer.write(enc.encode('DF\n'));
+    const deadline = Date.now() + 2500;
+    let parsed = null;
+    while (Date.now() < deadline) {
+      const l = await readLine(deadline - Date.now());
+      if (l === null || l === 'DONE') break;
+      const m = l.match(/^(\d+)\s+(\d+)\s+(\d+)$/);
+      if (m) parsed = { total: Number(m[1]), used: Number(m[2]), free: Number(m[3]) };
+    }
+    if (parsed && parsed.total > 0) {
+      lastDf = parsed;
+      renderDf();
+    } else if (!silent) {
+      log(I18N[uiLang].msgDfFail);
+    }
+  } catch (e) {
+    if (!silent) log(I18N[uiLang].msgDfFail);
+  }
 }
 
 async function sendOne(name, data) {
@@ -542,23 +654,35 @@ function parsePak(buf) {
   return items;
 }
 
+function syncUploadButtons() {
+  const connected = !!writer;
+  document.getElementById('connect').disabled = connected || !supported;
+  document.getElementById('disconnect').disabled = !connected || busy;
+  document.getElementById('checkDf').disabled = !connected || busy;
+  document.getElementById('autoAll').disabled = !connected || busy;
+  document.getElementById('files').disabled = !connected || busy;
+  for (const b of document.querySelectorAll('[data-region]')) {
+    b.disabled = !connected || busy || b.dataset.missing === '1';
+  }
+}
+
 async function sendAll(items) {
-  const bar = document.getElementById('bar'); bar.style.display = 'block';
+  const bar = document.getElementById('bar');
   const fill = bar.firstElementChild;
+  const meta = document.getElementById('progressMeta');
+  bar.style.display = 'block';
+  meta.style.display = 'block';
+  fill.style.width = '0%';
+  const t0 = Date.now();
   let done = 0, fail = 0;
   for (const it of items) {
     if (!await sendOne(it.name, it.data)) { log('   failed ' + it.name); fail++; }
     done++;
     fill.style.width = (done / items.length * 100) + '%';
+    const sec = ((Date.now() - t0) / 1000).toFixed(0);
+    meta.textContent = I18N[uiLang].msgProgress(done, items.length, it.name, sec);
   }
   log(I18N[uiLang].msgAllDone(done - fail, items.length));
-}
-
-function setConnectedUi(connected) {
-  document.getElementById('connect').disabled = connected || !supported;
-  document.getElementById('disconnect').disabled = !connected;
-  document.getElementById('files').disabled = !connected;
-  for (const b of document.querySelectorAll('[data-region]')) b.disabled = !connected;
 }
 
 document.getElementById('connect').onclick = async () => {
@@ -568,20 +692,27 @@ document.getElementById('connect').onclick = async () => {
     reader = port.readable.getReader();
     writer = port.writable.getWriter();
     lineBuf = '';
+    startReadPump();
     log(I18N[uiLang].msgConnected);
-    setConnectedUi(true);
-    probeRegions();
+    syncUploadButtons();
+    await probeRegions();
+    await queryDiskFree(true);
   } catch (e) { log(I18N[uiLang].msgConnFail + e.message); }
 };
 
 document.getElementById('disconnect').onclick = async () => {
-  try { if (reader) { await reader.cancel(); reader.releaseLock(); } } catch (e) {}
-  try { if (writer) { writer.releaseLock(); } } catch (e) {}
-  try { if (port) { await port.close(); } } catch (e) {}
+  const r = reader, w = writer, p = port;
   port = reader = writer = null;
-  setConnectedUi(false);
+  try { if (r) { await r.cancel(); r.releaseLock(); } } catch (e) {}
+  try { if (w) { w.releaseLock(); } } catch (e) {}
+  try { if (p) { await p.close(); } } catch (e) {}
+  lastDf = null;
+  document.getElementById('dfBox').style.display = 'none';
+  syncUploadButtons();
   log(I18N[uiLang].msgDisconnected);
 };
+
+document.getElementById('checkDf').onclick = () => queryDiskFree(false);
 
 function pakUrls(region) {
   return [`sprites-${region}.pak`];
@@ -610,6 +741,7 @@ async function probeRegions() {
       } catch (e) {}
     }
     if (!found) {
+      b.dataset.missing = '1';
       b.disabled = true;
       b.textContent = b.textContent.replace(/^⬇️ /, '').replace(/ \(.*\)$/, '') + I18N[uiLang].notPublished;
     }
@@ -620,29 +752,80 @@ async function loadRegion(btn) {
   const d = I18N[uiLang];
   const region = btn.dataset.region;
   if (!writer) { log(d.msgConnectFirst); return; }
-  btn.disabled = true;
-  log(d.msgDownloading(region));
-  let items;
+  if (busy) return;
+  busy = true;
+  syncUploadButtons();
   try {
-    items = parsePak(await fetchPak(region));
+    log(d.msgDownloading(region));
+    const items = parsePak(await fetchPak(region));
+    log(d.msgSending(items.length, region));
+    await sendAll(items);
+    log(d.msgRegionDone(region));
   } catch (e) {
     log(d.msgDlFail(region, e.message));
-    btn.disabled = false;
-    return;
+  } finally {
+    busy = false;
+    syncUploadButtons();
+    await queryDiskFree(true);
   }
-  log(d.msgSending(items.length, region));
-  await sendAll(items);
-  log(d.msgRegionDone(region));
 }
 for (const b of document.querySelectorAll('[data-region]')) b.onclick = () => loadRegion(b);
 
-document.getElementById('files').onchange = async (ev) => {
-  const files = [...ev.target.files];
-  const items = [];
-  for (const f of files) items.push({ name: 'mons/' + f.name, data: new Uint8Array(await f.arrayBuffer()) });
-  log(`${items.length} files...`);
-  await sendAll(items);
+document.getElementById('autoAll').onclick = async () => {
+  const d = I18N[uiLang];
+  if (!writer) { log(d.msgConnectFirst); return; }
+  if (busy) return;
+  busy = true;
+  syncUploadButtons();
+  try {
+    const seen = new Set();
+    const merged = [];
+    let totalBytes = 0;
+    for (let i = 0; i < ALL_REGIONS.length; i++) {
+      const region = ALL_REGIONS[i];
+      log(d.msgDlAll(i + 1, ALL_REGIONS.length, region));
+      const items = parsePak(await fetchPak(region));
+      for (const it of items) {
+        if (seen.has(it.name)) continue;  // deduplicate shared mons/thumbs.bin
+        seen.add(it.name);
+        merged.push(it);
+        totalBytes += it.data.length;
+      }
+    }
+    log(d.msgSendingAll(merged.length, totalBytes / 1024));
+    await sendAll(merged);
+    log(d.msgAllRegionsDone);
+  } catch (e) {
+    log(d.msgDlFail('all', e.message));
+  } finally {
+    busy = false;
+    syncUploadButtons();
+    await queryDiskFree(true);
+  }
 };
+
+document.getElementById('files').onchange = async (ev) => {
+  if (!writer || busy) return;
+  const files = [...ev.target.files];
+  if (!files.length) return;
+  busy = true;
+  syncUploadButtons();
+  try {
+    const items = [];
+    for (const f of files) items.push({ name: 'mons/' + f.name, data: new Uint8Array(await f.arrayBuffer()) });
+    log(`${items.length} files...`);
+    await sendAll(items);
+  } finally {
+    busy = false;
+    ev.target.value = '';
+    syncUploadButtons();
+    await queryDiskFree(true);
+  }
+};
+
+// Re-render storage meter label when switching UI language
+const _origApplyLang = applyLang;
+applyLang = function (l) { _origApplyLang(l); renderDf(); };
 </script>
 </body>
 </html>

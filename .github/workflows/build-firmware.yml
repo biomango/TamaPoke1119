@@ -13,6 +13,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read
   contents: write
   pages: write
   id-token: write
@@ -143,15 +144,60 @@ jobs:
           path: out/*.bin
           if-no-files-found: error
 
+      - name: Assemble GitHub Pages site (preserve zhtz at / and publish 1.75C at /1.75c/)
+        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'zhtz-1.75c' || github.ref_name == 'main') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf pages-site
+          mkdir -p pages-site
+
+          if [ "${GITHUB_REF_NAME}" = "zhtz-1.75c" ]; then
+            # 1) Keep existing zhtz (1.75 microSD edition) intact at site root /
+            git clone --depth 1 --branch zhtz "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" zhtz-src
+            cp -a zhtz-src/web/. pages-site/
+            # Overlay the latest compiled zhtz firmware binaries so / stays on the real Chinese 1.75 build
+            ZHTZ_RUN="$(gh run list -R "${GITHUB_REPOSITORY}" --branch zhtz --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)"
+            if [ -n "$ZHTZ_RUN" ]; then
+              mkdir -p zhtz-fw
+              if gh run download "$ZHTZ_RUN" -R "${GITHUB_REPOSITORY}" -n tamapoke-firmware-zhtz -D zhtz-fw; then
+                cp zhtz-fw/*.bin pages-site/firmware/
+                echo "Restored compiled zhtz firmware from run $ZHTZ_RUN into /firmware/"
+              fi
+            fi
+
+            # 2) Publish freshly compiled 1.75C web installer + compressed .pak at /1.75c/
+            mkdir -p pages-site/1.75c
+            cp -a TamaPoke/web/. pages-site/1.75c/
+          else
+            # Normal zhtz / main deploy at /
+            cp -a TamaPoke/web/. pages-site/
+            # Preserve 1.75c/ if branch zhtz-1.75c exists
+            if git ls-remote --exit-code --heads "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" zhtz-1.75c >/dev/null 2>&1; then
+              git clone --depth 1 --branch zhtz-1.75c "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" c175-src
+              mkdir -p pages-site/1.75c
+              cp -a c175-src/web/. pages-site/1.75c/
+              C_RUN="$(gh run list -R "${GITHUB_REPOSITORY}" --branch zhtz-1.75c --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)"
+              if [ -n "$C_RUN" ]; then
+                mkdir -p c175-fw
+                if gh run download "$C_RUN" -R "${GITHUB_REPOSITORY}" -n tamapoke-firmware-zhtz-1.75c -D c175-fw; then
+                  cp c175-fw/*.bin pages-site/1.75c/firmware/
+                fi
+              fi
+            fi
+          fi
+          ls -lh pages-site/ pages-site/1.75c/
+
       - name: Setup GitHub Pages
-        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
+        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'zhtz-1.75c' || github.ref_name == 'main') }}
         uses: actions/configure-pages@v5
 
       - name: Upload web installer site for GitHub Pages
-        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
+        if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'zhtz-1.75c' || github.ref_name == 'main') }}
         uses: actions/upload-pages-artifact@v3
         with:
-          path: TamaPoke/web
+          path: pages-site
 
       - name: Update web/firmware/ in git (manual dispatch only)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_web_firmware }}
@@ -166,7 +212,7 @@ jobs:
           fi
 
   deploy-pages:
-    if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'main') }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref_name == 'zhtz' || github.ref_name == 'zhtz-1.75c' || github.ref_name == 'main') }}
     needs: build
     runs-on: ubuntu-latest
     environment:
