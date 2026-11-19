@@ -1,0 +1,50 @@
+name: ESP32-S3 firmware validation
+
+on:
+  push:
+    branches:
+      - feature/traditional-chinese-tw
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install SDL2 for desktop tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32-S3 core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install firmware libraries
+        run: |
+          arduino-cli lib install "GFX Library for Arduino" SensorLib XPowersLib U8g2
+
+      - name: Run emulator and firmware tests
+        run: bash tools/emu/tests/run.sh
+
+      - name: Build flashable firmware bundle
+        run: bash tools/build_web.sh
+
+      - name: Upload firmware binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: tamapoke-esp32s3-traditional-chinese
+          path: |
+            web/firmware/*.bin
+            web/manifest.json
+          if-no-files-found: error
+          retention-days: 30
