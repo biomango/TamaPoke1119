@@ -14,6 +14,8 @@
 #define INPUT_PULLUP 2
 #define INPUT 0
 #define OUTPUT 1
+#define LOW 0
+#define HIGH 1
 #define FALLING 2
 #ifndef PI
 #define PI 3.1415926535897932384626433832795
@@ -30,6 +32,7 @@ inline void delay(uint32_t ms) {
   (void)ms;
 }
 inline void pinMode(int, int) {}
+inline int digitalRead(int) { return HIGH; }
 inline int digitalPinToInterrupt(int p) { return p; }
 
 // There is no interrupt controller here, so the handler is kept in a slot and

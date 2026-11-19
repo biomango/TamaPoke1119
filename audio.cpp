@@ -20,7 +20,7 @@
 
 static I2SClass i2s;
 static bool gReady = false;
-static bool gOn = true;
+static volatile bool gOn = true;
 static QueueHandle_t gQ = nullptr;
 
 // ---- I2C del códec ----
@@ -200,6 +200,7 @@ static void audioTask(void *) {
         if (!ampOn) { digitalWrite(PA, HIGH); delay(6); ampOn = true; }
         const SfxDef &d = SFX[id];
         for (uint8_t i = 0; i < d.len; i++) {
+          if (!gOn) { gSyn.allOff(); break; }
           uint16_t f = hzToGb(d.n[i].f);
           // percussion for the impact cues, a pulse for everything else
           if (id == SFX_HIT || id == SFX_FAINT)
@@ -297,6 +298,7 @@ void sfxPlay(uint8_t id) {
 
 void audioSetEnabled(bool on) {
   gOn = on;
+  if (!on && gQ) xQueueReset(gQ);
   Preferences p;
   p.begin("tamapoke", false);
   p.putBool("snd", on);

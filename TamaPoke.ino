@@ -663,6 +663,61 @@ uint32_t choiceUntil = 0;   // se cierra solo a este millis
 int16_t tX0, tY0, tXl, tYl; // gesto en curso (inicio y ultima posicion)
 uint32_t tStart = 0;
 bool holdFired = false;
+uint32_t muteToastUntil = 0;  // brief on-screen sound toggle pill after pressing BOOT
+
+// Draw a brief top pill showing current audio state after BOOT mute toggle.
+static void drawMuteToast() {
+  if (!muteToastUntil) return;
+  if ((int32_t)(millis() - muteToastUntil) >= 0) {
+    muteToastUntil = 0;
+    return;
+  }
+  bool on = audioEnabled();
+  const char *lbl = on ? T(S_SND_ON) : T(S_SND_OFF);
+  int pw = uiTextWidth(lbl, 2) + 36;
+  if (pw < 120) pw = 120;
+  int px = CX - pw / 2;
+  int py = 32;
+  gfx->fillRoundRect(px, py, pw, 34, 17, on ? UI_BAR_OK : UI_BAR_BAD);
+  gfx->drawRoundRect(px, py, pw, 34, 17, UI_INK);
+  uiTextCentered(CX, py + 9, lbl, 2, UI_WHITE);
+}
+
+static void flushUi() {
+  drawMuteToast();
+  gfx->flush();
+}
+
+// Runtime BOOT button (GPIO 0, active-low): debounced single press toggles mute.
+static void handleBootButton(uint32_t now) {
+  static bool init = false;
+  static bool stableDown = false;
+  static bool rawDown = false;
+  static uint32_t changedAt = 0;
+
+  bool down = (digitalRead(BTN_BOOT) == LOW);
+  if (!init) {
+    init = true;
+    stableDown = rawDown = down;
+    changedAt = now;
+    return;
+  }
+  if (down != rawDown) {
+    rawDown = down;
+    changedAt = now;
+  }
+  if (rawDown != stableDown && (now - changedAt >= 40)) {
+    stableDown = rawDown;
+    if (stableDown) {
+      bool nextOn = !audioEnabled();
+      audioSetEnabled(nextOn);
+      if (nextOn) sfxPlay(SFX_TAP);
+      muteToastUntil = now + 1500;
+      galleryDirty = true;  // show toast immediately even on the static Pokedex grid
+      if (!screenOff) lastInteract = now;
+    }
+  }
+}
 
 void setup() {
   Serial.setRxBufferSize(8192);  // la transferencia a SD llega en bloques de 2 KB
@@ -706,6 +761,7 @@ void setup() {
   // INT activo-bajo: salta cuando hay datos. Gatea las lecturas I2C (ver loop)
   pinMode(TP_INT, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(TP_INT), touchIsr, FALLING);
+  pinMode(BTN_BOOT, INPUT_PULLUP);
 
   party.begin();
   pet.begin();
@@ -818,6 +874,13 @@ void loop() {
       pet.setScreenOff(screenOff);   // asleep only if it is also night
       if (!screenOff) lastInteract = now;
     }
+  }
+
+  // BOOT button (GPIO 0): toggle mute/unmute during normal runtime
+  handleBootButton(now);
+  if (muteToastUntil && (int32_t)(now - muteToastUntil) >= 0) {
+    muteToastUntil = 0;
+    galleryDirty = true;  // clear toast on static Pokedex grid
   }
 
   updateBrightness(now);
@@ -1379,7 +1442,7 @@ void renderMonSheet(const PartyMon &m, bool fromBox) {
     drawConfirmPanel(q, T(S_RELEASE_GONE), nullptr, UI_BAR_BAD,
                      T(S_YES), UI_BAR_BAD, UI_WHITE, T(S_NO), UI_TRACK, UI_INK);
   }
-  gfx->flush();
+  flushUi();
 }
 
 void renderPartyDetail() {
@@ -2154,7 +2217,7 @@ void renderStarterSelect() {
     if (th) drawThumb(th, 76, ry - 5, 3, false);
     uiTextAt(178, ry + 24, speciesName(d), 3, UI_INK);
   }
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- crash breadcrumbs ----------
@@ -2331,7 +2394,7 @@ void render() {
                                                       : T(S_GOODBYE);
     drawHeader(speciesName(pet.speciesId), d.accent, msg);
     drawCeremony();
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -2436,7 +2499,7 @@ void render() {
 
   if (menuOpen) drawMenu();
 
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- minijuego: toques con la pokeball ----------
@@ -2594,7 +2657,7 @@ void renderSack() {
       snprintf(r, sizeof(r), T(S_RECORD_FMT), pet.strHi);
       uiTextCentered(CX, 256, r, 2, ink);
     }
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -2604,7 +2667,7 @@ void renderSack() {
     sackGain = pet.trainStrength(sackHits);
     sfxPlay(sackNewHi ? SFX_MEDAL : SFX_PLAY);
     sackOverUntil = now + 3500;
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -2632,7 +2695,7 @@ void renderSack() {
   gfx->fillRoundRect(CX - bw / 2, 350, bw, 16, 5, UI_TRACK);
   if (fw > 2) gfx->fillRoundRect(CX - bw / 2, 350, fw, 16, 5, UI_BAR_OK);
 
-  gfx->flush();
+  flushUi();
 }
 
 // fondo del minijuego: hatibat del bicho (cielo por hora + suelo del bioma)
@@ -2680,7 +2743,7 @@ void renderGame() {
     }
     const char *msg = gameScore >= 10 ? T(S_GREAT_JOY) : T(S_PLUS_JOY);
     uiTextCentered(CX, 250, msg, 2, ink);
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -2740,7 +2803,7 @@ void renderGame() {
   // la pokeball
   drawMap(SPR_ICON_PLAY, 16, (int)ballX - 24, (int)ballY - 24, 3, false);
 
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- ficha del bicho (deslizar vertical) ----------
@@ -2878,7 +2941,7 @@ void renderClock() {
   char ver[20];
   snprintf(ver, sizeof(ver), "TamaPoke v%s", FW_VERSION);
   uiTextCentered(CX, 436, ver, 1, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 void clockTap(int16_t x, int16_t y) {
@@ -3123,7 +3186,7 @@ void renderMovePick() {
     else gfx->drawCircle(CX - (pages - 1) * 13 + i * 26, 380, 4, UI_INK);
   }
   uiTextCentered(CX, 402, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- battle ----------
@@ -3728,7 +3791,7 @@ void renderWin() {
   }
 
   uiTextCentered(CX, 380, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 void renderBattle() {
@@ -3813,7 +3876,7 @@ void renderBattle() {
       }
     }
   }
-  gfx->flush();
+  flushUi();
 }
 
 // Brings on the flagged replacement and starts its entrance.
@@ -4095,7 +4158,7 @@ void renderPlayer() {
     else gfx->drawCircle(dx, 366, 4, UI_INK);
   }
   uiTextCentered(CX, 392, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- reaction test (trains SPEED) ----------
@@ -4167,7 +4230,7 @@ void renderSpeed() {
       snprintf(r, sizeof(r), T(S_RECORD_FMT), pet.spdHi);
       uiTextCentered(CX, 256, r, 2, ink);
     }
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -4177,7 +4240,7 @@ void renderSpeed() {
     spdGain = pet.trainSpeed(spdHits);
     sfxPlay(spdNewHi ? SFX_MEDAL : SFX_PLAY);
     spdOverUntil = now + 3500;
-    gfx->flush();
+    flushUi();
     return;
   }
   // target expired?
@@ -4202,7 +4265,7 @@ void renderSpeed() {
   uint32_t left = (spdUntil > now) ? (spdUntil - now + 999) / 1000 : 0;
   snprintf(b, sizeof(b), "%us", (unsigned)left);
   uiTextCentered(CX, 76, b, 2, ink);
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- team select ----------
@@ -4327,7 +4390,7 @@ void renderPick() {
   gfx->drawRoundRect(PICK_GO_X, PICK_GO_Y, PICK_BTN_W, PICK_BTN_H, 12, UI_INK);
   uiTextCentered(PICK_GO_X + PICK_BTN_W / 2, PICK_GO_Y + 14, T(S_FIGHT), 2,
                  ok ? UI_BG_DAY : 0x8410);
-  gfx->flush();
+  flushUi();
 }
 
 void pickTap(int16_t x, int16_t y) {
@@ -4424,7 +4487,7 @@ void renderLan() {
     uiTextCentered(CX, 240, T(S_LAN_REMATCH), 2, UI_INK);
   }
   uiTextCentered(CX, 392, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 // Hands our chosen squad to the link, then announces.
@@ -4547,7 +4610,7 @@ void renderGyms() {
   gfx->fillRoundRect(148, 380, 170, 32, 9, UI_BG_DAY);
   gfx->drawRoundRect(148, 380, 170, 32, 9, UI_INK);
   uiTextCentered(CX, 388, T(S_LAN), 2, UI_INK);
-  gfx->flush();
+  flushUi();
 }
 
 // The region pill under a waiting egg. Tapping it cycles; Pet::setRegion swaps
@@ -4756,7 +4819,7 @@ static void renderRegionPick(uint8_t mode) {
   if (mode != RPICK_FOR_START) {          // first boot has nowhere to go back to
     uiTextCentered(CX, 392, T(S_BACK), 2, UI_TRACK);
   }
-  gfx->flush();
+  flushUi();
 }
 
 // Returns the region tapped, or -1. Takes the mode because the row on screen is
@@ -4796,7 +4859,7 @@ void renderLearn() {
   gfx->fillRoundRect(70, LEARN_SKIP_Y, 326, 44, 12, UI_TRACK);
   gfx->drawRoundRect(70, LEARN_SKIP_Y, 326, 44, 12, UI_INK);
   uiTextCentered(CX, LEARN_SKIP_Y + 14, T(S_LEARN_SKIP), 2, UI_INK);
-  gfx->flush();
+  flushUi();
 }
 
 // pagina 2: medallas con etiqueta descriptiva
@@ -4893,7 +4956,7 @@ void renderCard() {
     else gfx->drawCircle(dx, 374, 4, UI_INK);
   }
   uiTextCentered(CX, 398, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- menu overlay ----------
@@ -4970,7 +5033,7 @@ void renderTrain() {
   }
 
   uiTextCentered(CX, TRAIN_Y + TRAIN_H - 22, T(S_TR_DEF_HINT), 1, UI_INK);
-  gfx->flush();   // without this the panel never updates and the screen freezes
+  flushUi();   // without this the panel never updates and the screen freezes
 }
 
 // ---------- the box ----------
@@ -5018,7 +5081,7 @@ void renderBox() {
     else gfx->drawCircle(dx, 366, 4, UI_INK);
   }
   uiTextCentered(CX, 392, T(S_BACK), 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 void boxTap(int16_t x, int16_t y) {
@@ -5152,7 +5215,7 @@ void renderParty() {
                      partyPick ? UI_BAR_BAD : UI_TRACK);
   gfx->drawRoundRect(PARTYCLOSE_X, PARTYCLOSE_Y, PARTYCLOSE_W, PARTYCLOSE_H, 12, UI_INK);
   uiTextCentered(CX, PARTYCLOSE_Y + 14, ex, 2, partyPick ? UI_WHITE : UI_INK);
-  gfx->flush();
+  flushUi();
 }
 
 // ---------- teclado para renombrar ----------
@@ -5203,7 +5266,7 @@ void renderKeyboard() {
       uiTextCentered(x + (KB_W - 6) / 2, y + KB_H / 2 - 10, lab, 2, UI_INK);
     }
   }
-  gfx->flush();
+  flushUi();
 }
 
 void keyboardTap(int16_t x, int16_t y) {
@@ -5266,7 +5329,7 @@ void renderGallery() {
       if (t) drawThumb(t, CX - GAL_CELL, 135, 4, !reg);
     }
     uiTextCentered(CX, 408, T(S_DETAIL_BACK), 2, UI_INK);
-    gfx->flush();
+    flushUi();
     return;
   }
 
@@ -5320,7 +5383,7 @@ void renderGallery() {
   char pg[12];
   snprintf(pg, sizeof(pg), "%d/%d", galleryPage + 1, (int)GAL_PAGES);
   uiTextCentered(CX, 428, pg, 2, UI_TRACK);
-  gfx->flush();
+  flushUi();
 }
 
 void galleryTap(int16_t x, int16_t y) {

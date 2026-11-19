@@ -32,6 +32,9 @@
 #define I2S_DO_IO 8
 #define PA 46
 
+// BOOT button (Key1 on Waveshare 1.75C, active-low with external pull-up)
+#define BTN_BOOT 0
+
 // Note: ESP32-S3-Touch-AMOLED-1.75C has no microSD slot (GPIO 1 and GPIO 2 are
 // wired to LCD_RESET and TP_RESET). Compressed sprites are stored in internal
 // 32 MB Flash (LittleFS).
