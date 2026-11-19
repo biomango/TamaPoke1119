@@ -69,6 +69,12 @@ for src in "$HERE"/*_test.cpp; do
   name="$(basename "$src" .cpp)"
   [ -n "$FILTER" ] && [[ "$name" != *"$FILTER"* ]] && continue
   extra=()
+  # The optional PMD sprite pack is not stored in this repository. Only run
+  # the file-loading test when the user/CI has supplied that external asset pack.
+  if [ "$name" = "sprite_test" ] && [ ! -d "$ROOT/tools/sdcard/mons" ]; then
+    echo "=== sprite_test: SKIPPED (optional tools/sdcard/mons pack not present)"
+    continue
+  fi
   needs_sketch "$name" && extra=("$EMU/sketch.cpp" "$EMU/host_impl.cpp" "$EMU/font.cpp" "$EMU/clock.cpp")
   needs_host "$name" && extra=("$EMU/host_impl.cpp" "$EMU/font.cpp")
   srcs=("${CORE[@]}")
