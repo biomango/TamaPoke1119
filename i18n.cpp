@@ -420,31 +420,30 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
 };
 
 // Nombres de medalla en sus tres longitudes [idioma][medalla].
+// Medal names, short labels and descriptions: [language][medal].
 static const char *const MED_NAME[LANG_COUNT][MED_COUNT] = {
   { "Nv.10", "Nv.25", "Nv.50", "BAYA", "RACHA 7", "VINCULO", "FORMA TOPE", "EN FORMA" },
   { "Lv.10", "Lv.25", "Lv.50", "BERRY", "7 STREAK", "BOND", "TOP FORM", "IN SHAPE" },
-  { "Lv.10", "Lv.25", "Lv.50", "樹果", "連續 7 天", "羈絆", "最終型態", "健康寶可夢" },
   { "Niv.10", "Niv.25", "Niv.50", "BAIE", "SERIE 7", "LIEN", "FORME MAX", "EN FORME" },
   { "Lv.10", "Lv.25", "Lv.50", "BEERE", "7 SERIE", "BINDUNG", "ENDFORM", "FIT" },
   { "Lv.10", "Lv.25", "Lv.50", "BACCA", "SERIE 7", "LEGAME", "FORMA MAX", "IN FORMA" },
   { "Niv.10", "Niv.25", "Niv.50", "BAGA", "SEQ 7", "LACO", "FORMA MAX", "EM FORMA" },
+  { "Lv.10", "Lv.25", "Lv.50", "樹果", "連續 7 天", "羈絆", "最終型態", "健康寶可夢" },
 };
 static const char *const MED_LBL[LANG_COUNT][MED_COUNT] = {
   { "Nv10", "Nv25", "Nv50", "BAYA", "7DIAS", "VINC", "TOPE", "SANO" },
   { "Lv10", "Lv25", "Lv50", "BERRY", "7DAYS", "BOND", "TOP", "FIT" },
-  { "Lv10", "Lv25", "Lv50", "樹果", "7天", "羈絆", "最終", "健康" },
   { "Niv10", "Niv25", "Niv50", "BAIE", "7JRS", "LIEN", "MAX", "FORME" },
   { "Lv10", "Lv25", "Lv50", "BEERE", "7TAGE", "BND", "END", "FIT" },
   { "Lv10", "Lv25", "Lv50", "BACCA", "7GG", "LEG", "MAX", "FIT" },
   { "Niv10", "Niv25", "Niv50", "BAGA", "7DIAS", "LACO", "MAX", "FIT" },
+  { "Lv10", "Lv25", "Lv50", "樹果", "7天", "羈絆", "最終", "健康" },
 };
 static const char *const MED_DSC[LANG_COUNT][MED_COUNT] = {
   { "NIVEL 10", "NIVEL 25", "NIVEL 50", "BAYA HALLADA",
     "RACHA 7 DIAS", "VINCULO MAX", "FORMA FINAL", "EN FORMA" },
   { "LEVEL 10", "LEVEL 25", "LEVEL 50", "BERRY FOUND",
     "7 DAY STREAK", "MAX BOND", "FINAL FORM", "IN SHAPE" },
-  { "Lv.10", "Lv.25", "Lv.50", "找到樹果",
-    "連續照顧 7 天", "最高羈絆", "最終型態", "健康狀態" },
   { "NIVEAU 10", "NIVEAU 25", "NIVEAU 50", "BAIE TROUVEE",
     "SERIE 7 JOURS", "LIEN MAX", "FORME FINALE", "EN FORME" },
   { "LEVEL 10", "LEVEL 25", "LEVEL 50", "BEERE GEFUNDEN",
@@ -453,6 +452,8 @@ static const char *const MED_DSC[LANG_COUNT][MED_COUNT] = {
     "SERIE 7 GIORNI", "LEGAME MAX", "FORMA FINALE", "IN FORMA" },
   { "NIVEL 10", "NIVEL 25", "NIVEL 50", "BAGA ACHADA",
     "SEQ 7 DIAS", "LACO MAX", "FORMA FINAL", "EM FORMA" },
+  { "Lv.10", "Lv.25", "Lv.50", "找到樹果",
+    "連續照顧 7 天", "最高羈絆", "最終型態", "健康狀態" },
 };
 
 const char *T(StrId id) { return STRINGS[gLang][id]; }
