@@ -1,9 +1,9 @@
 #pragma once
 #include <Arduino.h>
 
-// Idiomas soportados. La fuente del firmware no tiene acentos: ambos textos van
-// sin tildes ni enes (igual que ya iba el espanol).
-enum Lang : uint8_t { LANG_ES = 0, LANG_EN, LANG_FR, LANG_DE, LANG_IT, LANG_PT, LANG_COUNT };
+// Supported languages. Western languages stay ASCII-only for the 5x7 font;
+// LANG_ZH_TW uses UTF-8 Traditional Chinese rendered via cjk_text/cjk_font.
+enum Lang : uint8_t { LANG_ES = 0, LANG_EN, LANG_FR, LANG_DE, LANG_IT, LANG_PT, LANG_ZH_TW, LANG_COUNT };
 #define LANG_DEFAULT LANG_EN  // idioma por defecto: ingles
 
 extern Lang gLang;  // idioma activo (definido en i18n.cpp)
@@ -130,6 +130,9 @@ enum StrId : uint8_t {
   S_RELEASE_GONE,   // ...and the warning under it: this one does not come back
   S_BOX_TAKE,       // box detail sheet: move this creature into the party
   S_RETIRE_GONE,    // retire confirm: an early retire is not banked either
+  S_TAP_MORE,       // battle log continuation prompt
+  S_STAB,           // same-type attack bonus marker on move rows
+  S_OK,             // confirmation button label
   STR_COUNT
 };
 
@@ -137,6 +140,16 @@ const char *T(StrId id);       // texto en el idioma activo
 const char *medalName(int i);  // banner de medalla (MED_COUNT)
 const char *medalLabel(int i); // etiqueta corta de medalla
 const char *medalDesc(int i);  // descripcion larga de medalla
+
+// Localized display names for game data (Traditional Chinese when LANG_ZH_TW,
+// canonical English tables otherwise).
+const char *speciesName(int16_t dex);
+const char *moveName(uint8_t mv);
+const char *typeNameLoc(uint8_t t);
+const char *regionNameLoc(uint8_t r);
+const char *trainerNameLoc(uint8_t region, uint8_t idx);
+const char *trainerPlaceLoc(uint8_t region, uint8_t idx);
+const char *avatarNameLoc(uint8_t idx);
 
 void loadLang();             // lee el idioma de NVS (llamar en setup)
 void setLang(Lang l);        // cambia y persiste el idioma

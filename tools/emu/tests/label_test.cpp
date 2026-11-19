@@ -13,16 +13,17 @@ int FakeSerial::available() { return 0; }
 String FakeSerial::readStringUntil(char) { return String(""); }
 void sfxPlay(uint8_t) {}
 #include "i18n.h"
+#include "cjk_text.h"
 #include <cstdio>
 #include <cstring>
 int main(){
   const StrId ids[] = { S_VIN, S_STAT_ATK, S_STAT_DEF, S_STAT_SPE, S_STAT_VIT, S_STAT_WGT };
-  const char *ln[] = {"ES","EN","FR","DE","IT","PT"};
-  int worst = 0;
+  const char *ln[] = {"ES","EN","FR","DE","IT","PT","ZH_TW"};
+  int worst = 0, bad = 0;
   for (int l=0;l<LANG_COUNT;l++){ setLang((Lang)l);
-    for (auto id : ids){ int w = 70 + (int)strlen(T(id))*12;
-      if (w > 132) printf("COLLIDES %s \"%s\" ends at x=%d (bar starts 132)\n", ln[l], T(id), w);
+    for (auto id : ids){ int w = 70 + uiTextWidth(T(id), 2);
+      if (w > 132) { printf("COLLIDES %s \"%s\" ends at x=%d (bar starts 132)\n", ln[l], T(id), w); bad++; }
       if (w > worst) worst = w; } }
   printf("widest label ends at x=%d\n", worst);
-  return 0;
+  return bad ? 1 : 0;
 }

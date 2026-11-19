@@ -25,7 +25,7 @@ This project is not affiliated with or endorsed by any of those companies.
 | Resource | Source | Use in the project |
 |---|---|---|
 | **All sprites** (idle, walk, sleep, eat, hurt, attack…) | [PMD Sprite Collaboration (PMDCollab/SpriteCollab)](https://github.com/PMDCollab/SpriteCollab) | Mystery-Dungeon-style animated sprites used everywhere: main screen, stat card, minigame, and the Pokédex grid + detail view |
-| **Base stats and learnsets** | [PokéAPI](https://pokeapi.co) | Real stats and level-up moves for all 386 |
+| **Base stats, learnsets and zh-Hant names** | [PokéAPI](https://pokeapi.co) | Real stats, level-up moves, and Traditional Chinese species/move/type/region names |
 | **Gym badges** (all three regions) | [SteGriff/pokemon-badges](https://github.com/SteGriff/pokemon-badges) | `badges.h`, via `tools/gen_badges.py` — Stephen Griffiths 2011, **CC BY 3.0**, traced from Bulbapedia |
 | **Gym leader teams** (Johto, Hoenn) | [pret/pokecrystal](https://github.com/pret/pokecrystal), [pret/pokeemerald](https://github.com/pret/pokeemerald) | Verified against the games' own trainer tables by `tools/verify_rosters.py` — no art is taken, only the team data |
 
@@ -52,6 +52,8 @@ Huge thanks to that whole community for an enormous amount of work.
 | Board and pinout | [Waveshare ESP32-S3-Touch-AMOLED-1.75](https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.75) |
 | Web installer | [ESP Web Tools](https://esphome.github.io/esp-web-tools/) (Nabu Casa) |
 | 5x7 bitmap font in `tools/emu/font.cpp` | [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library) © 2012 Adafruit Industries, BSD licence |
+| 12x12 Traditional Chinese pixel font (`cjk_font.h`) | [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font) (`zh_tw` monospaced) by TakWolf, **SIL OFL 1.1** |
+| 16x16 CJK bitmap font (`cjk_font.h`) | [GNU Unifont](https://unifoundry.com/unifont/) by Roman Czyborra & Paul Hardy, **GPL-2.0+ with font exception / SIL OFL 1.1** |
 
 TamaPoke's own code (firmware and tools) is original work by Quique Tortosa and
 the contributors to this fork, MIT licensed. It contains no decompiled or
