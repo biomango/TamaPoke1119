@@ -33,6 +33,9 @@ cp "$B/TamaPoke.ino.bootloader.bin" web/firmware/bootloader.bin
 cp "$B/TamaPoke.ino.partitions.bin" web/firmware/partitions.bin
 cp "$B/boot_app0.bin"               web/firmware/boot_app0.bin
 cp "$B/TamaPoke.ino.bin"            web/firmware/app.bin
+# A single-file, save-preserving update image. Flash ONLY at 0x10000;
+# keep the existing bootloader, partition table, NVS and FFAT untouched.
+cp "$B/TamaPoke.ino.bin"            web/firmware/tamapoke-update.bin
 
 # Still merged for anyone flashing a BLANK board from the command line in one
 # shot. It is deliberately NOT in the manifest: it would erase the save.
@@ -42,7 +45,7 @@ cp "$B/TamaPoke.ino.bin"            web/firmware/app.bin
   0xe000  "$B/boot_app0.bin" \
   0x10000 "$B/TamaPoke.ino.bin"
 
-echo "OK -> web/firmware/ (4 parts + tamapoke.bin for a blank board)"
+echo "OK -> web/firmware/ (4 installer parts + tamapoke-update.bin at 0x10000 + tamapoke.bin for a blank board)"
 
 # The manifest version is what the installer shows people; keeping it in step
 # with FW_VERSION by hand is exactly the sort of thing that silently rots.
