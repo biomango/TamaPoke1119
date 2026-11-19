@@ -37,14 +37,14 @@ jobs:
           path: |
             ~/.arduino15
             ~/Arduino/libraries
-          key: arduino-esp32-s3-v1
+          key: arduino-esp32-s3-3.2.0-v1
 
       - name: Install ESP32 core and Arduino libraries
         run: |
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+          arduino-cli core install esp32:esp32@3.2.0
           arduino-cli lib install "GFX Library for Arduino" "SensorLib" "XPowersLib"
 
       - name: Compile firmware (.bin)
