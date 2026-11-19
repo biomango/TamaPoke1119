@@ -12,9 +12,12 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <U8g2lib.h>
+// U8g2 enables large fonts automatically on ESP32. Keep Arduino_GFX from
+// including every bundled CJK table; include only the compact font we use.
+#ifdef U8G2_USE_LARGE_FONTS
+#undef U8G2_USE_LARGE_FONTS
+#endif
 #include "Arduino_GFX_Library.h"
-// Include only the compact CJK font needed by this locale. Defining the large
-// font switch before Arduino_GFX would pull every bundled CJK font into the TU.
 #define U8G2_USE_LARGE_FONTS
 #include <font/u8g2_font_chill7_h_cjk.h>
 #include "TouchDrvCSTXXX.hpp"
