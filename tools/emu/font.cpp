@@ -106,4 +106,5 @@ const uint8_t GLCD_FONT[1280] = {
 
 // The desktop emulator does not link U8g2; this placeholder satisfies the
 // sketch's font symbol while the emulator draws a simple CJK box glyph.
+extern const uint8_t u8g2_font_chill7_h_cjk[];
 const uint8_t u8g2_font_chill7_h_cjk[1] = { 0 };
