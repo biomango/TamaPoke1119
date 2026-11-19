@@ -11,9 +11,12 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#define U8G2_USE_LARGE_FONTS
 #include <U8g2lib.h>
 #include "Arduino_GFX_Library.h"
+// Include only the compact CJK font needed by this locale. Defining the large
+// font switch before Arduino_GFX would pull every bundled CJK font into the TU.
+#define U8G2_USE_LARGE_FONTS
+#include <font/u8g2_font_chill7_h_cjk.h>
 #include "TouchDrvCSTXXX.hpp"
 #include "pin_config.h"
 #include "species.h"
