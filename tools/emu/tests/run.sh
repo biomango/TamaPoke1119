@@ -36,6 +36,9 @@ bash "$EMU/build.sh" >/dev/null
 # it is declared. That shipped once. If arduino-cli is installed, the firmware
 # build is the one that decides.
 if command -v arduino-cli >/dev/null; then
+  if ! arduino-cli lib list | grep -qi "U8g2"; then
+    arduino-cli lib install U8g2
+  fi
   FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
   if ! arduino-cli compile --fqbn "$FQBN" "$ROOT" >/dev/null 2>"$OUT_FW"; then
     echo "=== THE FIRMWARE DOES NOT COMPILE (the emulator does; that is not the same thing)"
