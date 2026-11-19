@@ -5,6 +5,11 @@ set -e
 cd "$(dirname "$0")/.."
 FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
 
+# Arduino_GFX enables its UTF-8 CJK font backend when U8g2 is installed.
+if ! arduino-cli lib list | grep -qi "U8g2"; then
+  arduino-cli lib install U8g2
+fi
+
 echo "Compilando..."
 arduino-cli compile --fqbn "$FQBN" --export-binaries .
 
